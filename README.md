@@ -75,7 +75,28 @@ HOST=0.0.0.0 PORT=8799 ACCESS_KEY=你的随机密钥 node server.js
 
 产物在 Actions 的 artifacts 里：`raccoon-mobile-apk`。
 
-构建脚本会：注入地址与密钥 → 生成 Android 工程 → 打开明文 HTTP 开关 → 打包 debug APK。构建前会先跑一遍 `npm test`，测试不过就不出包。
+构建脚本会：注入地址与密钥 → 生成 Android 工程 → 打开明文 HTTP 开关 → 注入固定签名 → 打包 **release APK**。构建前会先跑一遍 `npm test`，测试不过就不出包。
+
+### 固定签名（覆盖安装的前提）
+
+APK 用固定的 release 密钥签名，密钥存在 GitHub Actions Secrets 里，不进仓库：
+
+| Secret | 内容 |
+| --- | --- |
+| `KEYSTORE_BASE64` | `raccoon-release.jks` 的 base64 |
+| `KEYSTORE_PASSWORD` | keystore 密码 |
+| `KEY_ALIAS` | `raccoon` |
+| `KEY_PASSWORD` | 与 keystore 密码相同 |
+
+证书 SHA-256 指纹（workflow 里会强制校验，对不上直接让构建失败）：
+
+```
+11:BC:39:DC:78:50:2E:5F:4B:C7:3F:05:88:5E:DC:7C:5D:E8:DA:41:D9:DA:5B:C5:A1:7E:0F:E8:FD:E8:0C:B6
+```
+
+有效期到 **2056-11-11**。密钥文件与密码的备份在资料库（不在本仓库，公开仓库放 keystore 等于把签名权交出去）。
+
+> 从旧版 debug 包升级时，因为签名换了，**必须先卸载旧版再装**，一次即可。之后每次构建的 `versionCode` 取 CI 运行序号，递增，可以正常覆盖升级。
 
 ## 手机端自启（proot）
 

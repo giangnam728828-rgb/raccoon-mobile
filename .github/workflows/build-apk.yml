@@ -15,6 +15,10 @@ on:
         required: false
         default: ''
 
+env:
+  # 固定签名证书的 SHA-256 指纹，构建后强制比对，防止签名漂移
+  EXPECTED_CERT_SHA256: '11BC39DC78502E5F4BC73F05885EDC7C5DE8DA41D9DA5BC5A17E0FE8FDE80CB6'
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
@@ -89,12 +93,68 @@ jobs:
       - name: 同步 Web 资源
         run: npx cap copy android
 
-      - name: 构建调试 APK
-        run: cd android && ./gradlew assembleDebug --no-daemon
+      - name: 配置固定签名
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::warning::仓库未配置签名密钥，本次产出的是 debug 签名包，无法覆盖升级"
+            echo "BUILD_TYPE=debug" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > android/app/raccoon-release.jks
+          ls -l android/app/raccoon-release.jks
+          python3 scripts/inject-signing.py android/app/build.gradle
+          echo "BUILD_TYPE=release" >> "$GITHUB_ENV"
+
+      - name: 设置版本号
+        run: python3 scripts/set-version.py "${{ github.run_number }}"
+
+      - name: 构建 APK
+        env:
+          ANDROID_HOME: ${{ github.workspace }}/android-sdk
+          ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ "$BUILD_TYPE" = "release" ]; then
+            cd android && ./gradlew assembleRelease -x lintVitalRelease --no-daemon
+          else
+            cd android && ./gradlew assembleDebug --no-daemon
+          fi
+
+      - name: 校验签名指纹
+        run: |
+          if [ "$BUILD_TYPE" != "release" ]; then
+            echo "::warning::跳过指纹校验（本次是 debug 包）"
+            exit 0
+          fi
+          APK=$(ls android/app/build/outputs/apk/release/*.apk | grep -v unsigned | head -1)
+          echo "APK: $APK"
+          if ls android/app/build/outputs/apk/release/*unsigned* > /dev/null 2>&1; then
+            echo "::error::产出了未签名包，签名配置未生效"
+            exit 1
+          fi
+          ACTUAL=$(keytool -printcert -jarfile "$APK" | grep -i "SHA256:" | head -1 \
+                   | sed 's/.*SHA256:[[:space:]]*//' | tr -d ':[:space:]' | tr 'a-f' 'A-F')
+          echo "期望指纹: $EXPECTED_CERT_SHA256"
+          echo "实际指纹: $ACTUAL"
+          if [ "$ACTUAL" != "$EXPECTED_CERT_SHA256" ]; then
+            echo "::error::签名指纹不匹配，覆盖安装会失败"
+            exit 1
+          fi
+          echo "签名指纹一致 OK"
 
       - name: 上传 APK
         uses: actions/upload-artifact@v4
         with:
           name: raccoon-mobile-apk
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: |
+            android/app/build/outputs/apk/release/*.apk
+            android/app/build/outputs/apk/debug/*.apk
+            !android/app/build/outputs/apk/release/*unsigned*.apk
           if-no-files-found: error
