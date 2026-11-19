@@ -1,50 +1,82 @@
 # 小浣熊移动端
 
-商汤小浣熊的移动端客户端，直接对接官方云端接口，可打包成 APK。**手机号登录 + 多模型切换 + 推理强度 7 档 + 图片问答 + 文件导入 + 流式输出 + Markdown/代码块 + 多会话 + 系统提示词 + 语音输入**。
+商汤小浣熊的移动端客户端，直接对接官方云端接口，可打包成 APK。**手机号登录 + 多模型切换 + 推理强度 7 档 + 图片问答 + 文件导入 + 流式输出 + Markdown/代码块 + 多会话 + 提示词库 + 语音输入 + 朗读 + 云端备份**。
 
 > v1.4 起 **App 自己直连官方**，手机上不需要再跑任何代理服务。
 
 ## 界面
 
-设计方向是「夜间书桌」：石墨中性底 + 一支琥珀色的灯。
+设计方向是「纸与墨」，配色直接从应用图标里取样：纸白 `#FAF1EE`、墨 `#2E262C`、玫瑰 `#A5525D`、樱粉 `#CC838B`。
 
-- 单一中性阶梯（`#000000` / `#181818` / `#1f1f1f` / `#272727` / `#313131`），没有渐变、没有彩色光晕、没有彩色阴影。
-- 琥珀 `#f59e0b` 只用在需要注意力的一处：正在流式的细线、当前标签页、关键操作。
-- 主按钮是实心浅色（浅底深字），不是彩色发光按钮。
-- 底部标签栏（对话 / 记录 / 我的），弹层从底部升起；助手回答用左侧细线 + 正文，不套气泡。
-- 全套 `env(safe-area-inset-*)` 适配，刘海屏与手势条不遮挡内容。
+- AI 回答是一张摊开的白纸，左侧一道代表书写中笔迹的墨线；用户消息是右侧便签。
+- 一套 1.6 描边的线性图标（30+ 个内联 SVG symbol），没有 emoji，没有渐变，没有彩色光晕。
+- 底部标签栏（对话 / 记录 / 我的），弹层从底部升起。
+- 深色模式是「夜间的纸」`#171315`，不是纯黑。
+- 全套 `env(safe-area-inset-*)` 适配。
 
 ## 能力
 
 | 能力 | 说明 |
 | --- | --- |
-| 推理强度 | 关闭 / 极简 / 轻量 / 标准 / 深入 / 更深 / 最强，模型不支持时入口自动禁用并说明原因 |
-| 图片问答 | 拍照或相册选图，自动压到最长边 1400px，一次最多 6 张；模型不支持识图时直接提示换模型 |
-| 文件导入 | `.txt/.md/.csv/.json` 等直接读入当前提问，单文件上限 200KB |
-| 用量显示 | 回答下方显示本次 `tokens` 数 |
-| 多会话 | 置顶 / 重命名 / 删除 / 搜索，按「置顶 → 最近」排序 |
-| 系统提示词 | 真实编辑面板 + 5 个预设，按对话生效并拼在 messages 最前面 |
-| 模型选择 | 按能力分组（识图 / 推理 / 通用），显示上下文长度 |
-| 导出 | 调起系统分享面板，无 `navigator.share` 时回退复制 Markdown |
-| 语音输入 | 走系统 `SpeechRecognition`，不可用时自动隐藏入口 |
+| 推理强度 | 关闭 / 极简 / 轻量 / 标准 / 深入 / 更深 / 最强；模型不支持时入口自动禁用并说明原因 |
+| 图片问答 | 拍照或相册，自动压到最长边 1400px，一次最多 6 张；点图片可全屏查看 |
+| 文件导入 | `.txt/.md/.csv/.json` 等文本文件读入当前提问，单文件上限 200KB |
+| 消息操作 | 长按：复制 / 重新生成 / 朗读 / 分享 / 编辑并重发 / 删除 |
+| 朗读 | 系统 TTS，再点一次停止 |
+| 提示词库 | 6 条内置 + 自定义，可新建删除，一键填入输入框 |
+| 多会话 | 置顶 / 重命名 / 删除 / 按标题或内容搜索 |
+| 主题与字号 | 跟随系统 / 浅色 / 深色；正文字号三档实时生效 |
+| 云端备份 | 对话按账号存到自建代理，换手机或重装后可恢复 |
+| 用量统计 | 每条回答显示 tokens 数 |
+| 语音输入 | 系统 `SpeechRecognition`，不可用时自动隐藏 |
 
 ## 组成
 
-| 文件 | 作用 |
+| 路径 | 作用 |
 | --- | --- |
-| `public/direct.js` | 直连客户端：手机号 AES-128-CFB 加密、短信登录、会话与流式对话，全部在 App 内完成 |
-| `public/native.js` | 原生流式通道封装（绕开 WebView 跨域限制，App 内首选） |
-| `public/markdown.js` | 本地 Markdown 渲染（标题 / 列表 / 表格 / 代码块），无 CDN 依赖 |
-| `public/app.js` | 应用逻辑：壳、会话、流式对话、模型与推理、附件 |
-| `public/style.css` | 设计系统（令牌 + 组件） |
 | `public/index.html` | 结构 + 内联图标集 |
-| `android-ext/` | 原生插件源码，由 `scripts/inject-native-plugin.py` 注入到生成的 Android 工程 |
-| `server.js` | 可选的本地代理 + 网页版服务。给桌面浏览器用，或在 App 里手动开启「代理模式」时使用 |
+| `public/css/` | 设计令牌 / 基础层 / 界面层 |
+| `public/js/core.js` | DOM、格式化、Toast、弹层、剪贴板 |
+| `public/js/store.js` | 状态与持久化（会话、偏好、提示词） |
+| `public/js/api.js` | 通道选择、模型归一化、流式对话 |
+| `public/js/ui.js` | 壳：标签页、主题、字号、弹层装配 |
+| `public/js/thread.js` | 消息渲染、流式、滚动、消息操作 |
+| `public/js/composer.js` | 输入、附件、语音 |
+| `public/js/settings.js` | 设置注册表、模型列表、思考档位、我的 |
+| `public/js/prompts.js` | 提示词库 |
+| `public/js/app.js` | 登录、发送、会话、导出、云同步、启动 |
+| `public/direct.js` | 直连客户端：手机号 AES-128-CFB 加密、短信登录、流式对话 |
+| `public/native.js` | 原生流式通道（绕开 WebView 跨域限制，App 内首选） |
+| `public/markdown.js` | 本地 Markdown 渲染，无 CDN 依赖 |
+| `public/img/` | 品牌图与 favicon |
+| `assets/icons/` | Android 各密度图标源文件 |
+| `scripts/inject-icon.py` | 构建时把图标注入 Android 工程 |
+| `scripts/inject-native-plugin.py` | 构建时注入原生插件 |
+| `lib/config.js` | 环境变量与常量 |
+| `lib/util.js` | 响应 / 请求体 / 编码 |
+| `lib/auth.js` | 登录态与登录流程 |
+| `lib/upstream.js` | 官方接口客户端（逆向得到，改动需谨慎） |
+| `lib/static.js` | 静态资源（ETag / gzip+brotli / 缓存） |
+| `lib/sync.js` | 对话云同步 |
+| `server.js` | 本地代理入口与路由 |
 | `test/smoke.js` | 冒烟测试：自带假上游，不联网、不需要账号 |
-| `test/direct-crypto.js` | 校验 App 内置的 AES-128-CFB 与 Node 的实现逐字节一致 |
-| `deploy/` | 手机端 proot 代理的开机自启脚本（只有用代理模式才需要） |
-| `capacitor.config.json` | Capacitor 配置，把前端装进 Android WebView |
-| `.github/workflows/build-apk.yml` | GitHub Actions，自动构建 APK |
+| `test/direct-crypto.js` | 校验 AES-128-CFB 与 Node 实现逐字节一致 |
+
+## 扩展方式
+
+**加一项设置**：在 `public/js/settings.js` 的 `SETTINGS` 数组里加一条，界面自动渲染，不用碰 HTML。
+
+```js
+{
+  id: 'myOption', group: '对话', label: '我的选项', icon: 'spark', type: 'switch',
+  value: () => !!S.prefs.myOption,
+  toggle: (v) => { S.prefs.myOption = v; RC.savePrefs(); },
+}
+```
+
+`type` 支持 `switch`（开关）与 `cycle`（点击轮换取值）。
+
+**加一个后端接口**：在 `server.js` 的路由里加分支即可，`lib/util.js` 提供 `sendJSON / readBody`，`lib/auth.js` 提供 `current()`。
 
 ## 快速开始
 

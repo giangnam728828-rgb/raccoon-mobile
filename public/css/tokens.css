@@ -1,0 +1,109 @@
+/* ============================================================
+   小浣熊 · 设计令牌
+   方向「纸与墨」：跟着应用图标的世界走
+   暖纸底 + 墨色字 + 一支玫瑰色的笔尖
+   ============================================================ */
+
+:root {
+  /* ---- 纸 ---- */
+  --paper: #faf1ee;
+  --paper-deep: #f3e6e1;
+  --paper-card: #fffdfc;
+  --paper-sunk: #f7ebe6;
+
+  /* ---- 墨 ---- */
+  --ink: #2e262c;
+  --ink-2: #6b5c63;
+  --ink-3: #9a8a90;
+  --ink-4: #c4b6ba;
+
+  /* ---- 笔尖 ---- */
+  --rose: #a5525d;
+  --rose-deep: #8c414b;
+  --rose-soft: #f6e4e4;
+  --sakura: #cc838b;
+
+  /* ---- 语义 ---- */
+  --ok: #4f8a63;
+  --warn: #b8813c;
+  --danger: #b4453f;
+
+  /* ---- 线：纸上的淡墨 ---- */
+  --line: rgba(46, 38, 44, .085);
+  --line-2: rgba(46, 38, 44, .16);
+  --line-3: rgba(46, 38, 44, .26);
+
+  /* ---- 圆角阶梯 ---- */
+  --r-xs: 8px;
+  --r-sm: 11px;
+  --r-md: 15px;
+  --r-lg: 20px;
+  --r-xl: 26px;
+  --r-full: 999px;
+
+  /* ---- 间距（4 的倍数） ---- */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-7: 32px;
+  --s-8: 40px;
+  --s-9: 48px;
+
+  /* ---- 排版 ---- */
+  --font: -apple-system, BlinkMacSystemFont, "HarmonyOS Sans SC", "PingFang SC",
+    "Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  --fs-xs: 11.5px;
+  --fs-sm: 13px;
+  --fs-base: 15px;
+  --fs-md: 16px;
+  --fs-lg: 18px;
+  --fs-xl: 21px;
+  --fs-2xl: 26px;
+
+  /* ---- 动效 ---- */
+  --ease: cubic-bezier(.22, 1, .36, 1);
+  --t-fast: 130ms;
+  --t-mid: 240ms;
+
+  /* ---- 结构 ---- */
+  --gutter: 16px;
+  --tabbar: 56px;
+  --radius-app: 0px;
+
+  /* ---- 阅读字号（可在设置里调） ---- */
+  --reading: 16px;
+  --reading-lh: 1.72;
+}
+
+/* ============================================================
+   暗色：夜间纸（不是纯黑，留住纸的暖度）
+   ============================================================ */
+:root[data-theme="dark"] {
+  --paper: #171315;
+  --paper-deep: #100d0f;
+  --paper-card: #1f1a1d;
+  --paper-sunk: #1a1618;
+
+  --ink: #f2e9e7;
+  --ink-2: #b3a3a6;
+  --ink-3: #857377;
+  --ink-4: #5d4f53;
+
+  --rose: #d9969d;
+  --rose-deep: #e8aab0;
+  --rose-soft: #33232a;
+  --sakura: #cc838b;
+
+  --ok: #7fbb95;
+  --warn: #d9ab6d;
+  --danger: #e0857f;
+
+  --line: rgba(255, 255, 255, .075);
+  --line-2: rgba(255, 255, 255, .14);
+  --line-3: rgba(255, 255, 255, .22);
+}

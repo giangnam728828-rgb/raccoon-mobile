@@ -23,7 +23,7 @@ except ValueError:
     vc = 1
 
 # versionName 用 package.json 里的语义化版本，versionCode 仍取 CI 运行序号
-version_name = "2.0.0"
+version_name = "3.0.0"
 try:
     pkg = pathlib.Path(__file__).resolve().parent.parent / "package.json"
     version_name = json.loads(pkg.read_text(encoding="utf-8")).get("version", version_name)
