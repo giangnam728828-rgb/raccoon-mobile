@@ -864,78 +864,137 @@
     headers['content-type'] = 'application/json';
     headers.authorization = 'Bearer ' + auth.token;
 
-    var res;
-    try {
-      res = await fetch(UPSTREAM + '/api/web/llm/v2/chat/completions', {
+    // ---- 单行 SSE 解析（两种通道共用）----
+    var rawText = '';
+    function feed(line) {
+      var t = String(line == null ? '' : line).trim();
+      if (!t) return;
+      if (t.indexOf('data:') !== 0) {
+        if (rawText.length < 2000) rawText += t;
+        return;
+      }
+      var data = t.slice(5).trim();
+      if (!data || data === '[DONE]') return;
+      var frame;
+      try {
+        frame = JSON.parse(data);
+      } catch (e) {
+        return;
+      }
+      if (frame.error) {
+        handlers.onDelta({ error: frame.error.message || '官方返回错误' });
+        return;
+      }
+      var choice = frame.choices && frame.choices[0];
+      if (!choice) return;
+      var delta = choice.delta || choice.message || {};
+      if (typeof delta.content === 'string' && delta.content) handlers.onDelta({ content: delta.content });
+      var rsn = delta.reasoning_content || delta.reasoning;
+      if (typeof rsn === 'string' && rsn) handlers.onDelta({ reasoning: rsn });
+    }
+
+    function errMessage(status) {
+      var msg = '对话请求失败（HTTP ' + status + '）';
+      try {
+        var j = JSON.parse(rawText);
+        msg = j.message || j.msg || j.details || msg;
+      } catch (e) {}
+      return typeof msg === 'string' ? msg : '对话请求失败（HTTP ' + status + '）';
+    }
+
+    function checkStatus(status) {
+      if (status === 401 || status === 403) {
+        clearAuth();
+        throw authError('登录已失效，请重新登录');
+      }
+      if (status >= 400) throw new Error(errMessage(status));
+    }
+
+    // ---- 通道一：原生 HTTP（App 内首选，不受 CORS 约束）----
+    var nat = global.RaccoonNative;
+    if (nat && nat.available()) {
+      var st = 0;
+      try {
+        st = await nat.stream({
+          url: UPSTREAM + '/api/web/llm/v2/chat/completions',
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify(body),
+          onLine: feed,
+          signal: payload.signal,
+        });
+      } catch (e) {
+        if (e && e.name === 'AbortError') throw e;
+        // 连响应头都没拿到：可能是插件没注册上，退回浏览器通道再试一次
+        if (!st) return fetchChat();
+        throw new Error(e && e.message ? e.message : '对话中断');
+      }
+      checkStatus(st);
+      if (handlers.onDone) handlers.onDone();
+      return;
+    }
+
+    // ---- 通道二：浏览器 fetch（Web 版 / 原生通道缺失时）----
+    async function fetchChat() {
+      var req = {
         method: 'POST',
         headers: headers,
         body: JSON.stringify(body),
-        credentials: 'include',
         cache: 'no-store',
         signal: payload.signal,
-      });
-    } catch (e) {
-      if (e && e.name === 'AbortError') throw e;
-      throw netError('连不上官方服务，请检查网络');
-    }
-
-    if (res.status === 401 || res.status === 403) {
-      clearAuth();
-      throw authError('登录已失效，请重新登录');
-    }
-    if (!res.ok) {
-      var errText = '';
+      };
+      var res;
       try {
-        errText = await res.text();
-      } catch (e) {}
-      var msg = '对话请求失败（HTTP ' + res.status + '）';
-      try {
-        var j = JSON.parse(errText);
-        msg = j.message || j.msg || j.details || msg;
-      } catch (e) {}
-      throw new Error(msg);
-    }
-    if (!res.body) throw new Error('当前环境不支持流式响应');
-
-    var reader = res.body.getReader();
-    var decoder = new TextDecoder();
-    var buffer = '';
-
-    for (;;) {
-      var step = await reader.read();
-      if (step.done) break;
-      buffer += decoder.decode(step.value, { stream: true });
-      var lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-      for (var n = 0; n < lines.length; n++) {
-        var line = lines[n].trim();
-        if (!line || line.indexOf('data:') !== 0) continue;
-        var data = line.slice(5).trim();
-        if (!data || data === '[DONE]') continue;
-        var frame;
+        res = await fetch(UPSTREAM + '/api/web/llm/v2/chat/completions', { ...req, credentials: 'include' });
+      } catch (e) {
+        if (e && e.name === 'AbortError') throw e;
+        // 有的 WebView 对带 cookie 的跨域 POST 更严格，去掉 credentials 再试一次
         try {
-          frame = JSON.parse(data);
-        } catch (e) {
-          continue;
+          res = await fetch(UPSTREAM + '/api/web/llm/v2/chat/completions', { ...req, credentials: 'omit' });
+        } catch (e2) {
+          if (e2 && e2.name === 'AbortError') throw e2;
+          throw netError('连不上官方服务，请检查网络');
         }
-        if (frame.error) {
-          handlers.onDelta({ error: frame.error.message || '官方返回错误' });
-          continue;
-        }
-        var choice = frame.choices && frame.choices[0];
-        if (!choice) continue;
-        var delta = choice.delta || choice.message || {};
-        if (typeof delta.content === 'string' && delta.content) handlers.onDelta({ content: delta.content });
-        var rsn = delta.reasoning_content || delta.reasoning;
-        if (typeof rsn === 'string' && rsn) handlers.onDelta({ reasoning: rsn });
       }
+
+      if (res.status === 401 || res.status === 403) {
+        clearAuth();
+        throw authError('登录已失效，请重新登录');
+      }
+      if (!res.ok) {
+        try {
+          rawText = await res.text();
+        } catch (e) {}
+        throw new Error(errMessage(res.status));
+      }
+      if (!res.body) throw new Error('当前环境不支持流式响应');
+
+      var reader = res.body.getReader();
+      var decoder = new TextDecoder();
+      var buffer = '';
+
+      for (;;) {
+        var step = await reader.read();
+        if (step.done) break;
+        buffer += decoder.decode(step.value, { stream: true });
+        var lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (var n = 0; n < lines.length; n++) feed(lines[n]);
+      }
+      if (handlers.onDone) handlers.onDone();
     }
-    if (handlers.onDone) handlers.onDone();
+
+    return fetchChat();
   }
 
   // ---------- 连通性 ----------
   // 官方接口在没有 token 时会回 401/403，能拿到响应就说明网络通
   async function probe(timeoutMs) {
+    var nat = global.RaccoonNative;
+    if (nat && nat.available()) {
+      var nr = await nat.probe(UPSTREAM + '/api/web/auth/v1/user_info');
+      if (nr) return nr;
+    }
     var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
     var timer = setTimeout(function () {
       if (ctrl) ctrl.abort();

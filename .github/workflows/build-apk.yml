@@ -82,6 +82,9 @@ jobs:
       - name: 生成 Android 工程
         run: npx cap add android
 
+      - name: 注入原生流式通道
+        run: python3 scripts/inject-native-plugin.py android
+
       - name: 允许明文 HTTP（本地代理默认没有证书）
         run: |
           M=android/app/src/main/AndroidManifest.xml

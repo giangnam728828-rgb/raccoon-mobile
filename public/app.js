@@ -50,6 +50,9 @@
     verificationId: '',
     sessionId: '',
     lastError: '',
+    chats: [],
+    chatId: '',
+    system: '',
     nation: '+86',
     phoneForLogin: '',
   };
@@ -210,6 +213,8 @@
     state.model = '';
     state.verificationId = '';
     state.sessionId = '';
+    state.chats = [];
+    state.chatId = '';
     if (state.abort) {
       try {
         state.abort.abort();
@@ -483,7 +488,7 @@
 
   // ---------- 进入聊天 ----------
   async function enterChat() {
-    if (!state.sessionId) state.sessionId = window.RaccoonDirect.newSessionId();
+    if (!state.chats.length) loadChats();
     await Promise.all([loadMe(), loadCatalog()]);
     if (!state.model && state.models.length) state.model = state.models[0].id;
     updateModelBar();
@@ -563,6 +568,24 @@
 
     const content = el('div', 'content');
     bubble.appendChild(content);
+
+    // 回答下方的轻量操作条（复制 / 重试）
+    let actions = null;
+    if (m.role !== 'user') {
+      actions = el('div', 'msg-actions');
+      const bCopy = el('button', 'act');
+      bCopy.type = 'button';
+      bCopy.textContent = '复制';
+      bCopy.onclick = () => copyText(m.content, '已复制');
+      const bRetry = el('button', 'act');
+      bRetry.type = 'button';
+      bRetry.textContent = '重试';
+      bRetry.onclick = () => retryFrom(m);
+      actions.appendChild(bCopy);
+      actions.appendChild(bRetry);
+      bubble.appendChild(actions);
+    }
+
     row.appendChild(bubble);
 
     const render = () => {
@@ -572,7 +595,18 @@
         if (hasR && reasoningPre.textContent !== m.reasoning) reasoningPre.textContent = m.reasoning;
       }
       const text = m.content || '';
-      if (content.textContent !== text) content.textContent = text;
+      if (m.role === 'user') {
+        if (content.textContent !== text) content.textContent = text;
+      } else if (m._html !== text) {
+        // 模型输出按 Markdown 渲染；流式时约 90ms 重排一次，避免每个 token 都全量重解析
+        const now = Date.now();
+        if (!m.streaming || !m._mdAt || now - m._mdAt > 90) {
+          m._html = text;
+          m._mdAt = now;
+          content.innerHTML = window.MD.render(text);
+        }
+      }
+      if (actions) actions.classList.toggle('hidden', !!m.streaming);
       content.classList.toggle('cursor', !!m.streaming);
       if (m.role !== 'user') {
         typing.classList.toggle('hidden', !(m.streaming && !m.content && !m.reasoning));
@@ -655,6 +689,230 @@
     box.appendChild(createRow(m));
     scrollBottom(true);
     return m;
+  }
+
+  // ---------- 系统提示词 / 导出 ----------
+  function paintSystem() {
+    const box = $('set-system');
+    if (!box) return;
+    const v = state.system || '';
+    box.textContent = v ? (v.length > 10 ? v.slice(0, 10) + '…' : v) : '未设置';
+  }
+
+  function editSystem() {
+    const input = window.prompt('系统提示词（只对当前对话生效，留空=不设置）', state.system || '');
+    if (input === null) return;
+    state.system = input.trim();
+    syncCurrent();
+    paintSystem();
+    toast(state.system ? '已设置系统提示词' : '已清除系统提示词');
+  }
+
+  function exportCurrent() {
+    if (!state.messages.length) return toast('当前对话是空的');
+    const cur = state.chats.find((c) => c.id === state.chatId);
+    let md = '# ' + ((cur && cur.title) || '对话') + '\n\n';
+    state.messages.forEach((m) => {
+      md += (m.role === 'user' ? '**我**' : '**小浣熊**') + '\n\n' + (m.content || '') + '\n\n';
+    });
+    copyText(md, '已复制为 Markdown');
+  }
+
+  // ---------- 复制 / 重试 ----------
+  function copyText(text, tip) {
+    const s = String(text || '');
+    if (!s) return;
+    const done = () => toast(tip || '已复制');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(s).then(done).catch(() => fallbackCopy(s, done));
+    } else {
+      fallbackCopy(s, done);
+    }
+  }
+
+  function fallbackCopy(s, done) {
+    const ta = document.createElement('textarea');
+    ta.value = s;
+    ta.style.position = 'fixed';
+    ta.style.top = '-1000px';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      done();
+    } catch {
+      toast('复制失败');
+    }
+    ta.remove();
+  }
+
+  // 从这条回答重新生成：砍掉它和它之后的消息，用上一条提问重发
+  function retryFrom(m) {
+    if (state.streaming) return;
+    const idx = state.messages.indexOf(m);
+    if (idx < 0) return;
+    let ui = -1;
+    for (let i = idx - 1; i >= 0; i--) {
+      if (state.messages[i].role === 'user') {
+        ui = i;
+        break;
+      }
+    }
+    if (ui < 0) return;
+    const text = state.messages[ui].content;
+    state.messages = state.messages.slice(0, ui);
+    rebuildEmpty();
+    syncCurrent();
+    $('input').value = text;
+    autoGrow();
+    updateSend();
+    send();
+  }
+
+  // ---------- 多会话 ----------
+  const CHATS_KEY = 'raccoon.chats.v1';
+  const ACTIVE_KEY = 'raccoon.chat.active';
+
+  function loadChats() {
+    let list = [];
+    try {
+      list = JSON.parse(localStorage.getItem(CHATS_KEY) || '[]') || [];
+    } catch {
+      list = [];
+    }
+    if (!Array.isArray(list)) list = [];
+    state.chats = list.filter((c) => c && c.id);
+    let active = '';
+    try {
+      active = localStorage.getItem(ACTIVE_KEY) || '';
+    } catch {}
+    if (!state.chats.some((c) => c.id === active)) active = state.chats[0] ? state.chats[0].id : '';
+    if (!active) {
+      active = window.RaccoonDirect.newSessionId();
+      state.chats.unshift({ id: active, title: '新对话', messages: [], updatedAt: Date.now() });
+    }
+    state.chatId = active;
+    state.sessionId = active;
+    const cur = state.chats.find((c) => c.id === active);
+    state.messages = ((cur && cur.messages) || []).map((m) => ({ ...m, streaming: false }));
+    state.system = (cur && cur.system) || '';
+    saveChats();
+  }
+
+  function saveChats() {
+    try {
+      localStorage.setItem(CHATS_KEY, JSON.stringify(state.chats.slice(0, 60)));
+      localStorage.setItem(ACTIVE_KEY, state.chatId || '');
+    } catch {}
+  }
+
+  function syncCurrent() {
+    const cur = state.chats.find((c) => c.id === state.chatId);
+    if (!cur) return;
+    cur.messages = state.messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+      reasoning: m.reasoning || '',
+    }));
+    cur.system = state.system || '';
+    const first = cur.messages.find((m) => m.role === 'user');
+    if (first && first.content) {
+      cur.title = String(first.content).replace(/\s+/g, ' ').trim().slice(0, 24);
+    }
+    cur.updatedAt = Date.now();
+    saveChats();
+  }
+
+  function newChat() {
+    if (state.streaming) stopStreaming();
+    syncCurrent();
+    const id = window.RaccoonDirect.newSessionId();
+    state.chats.unshift({ id, title: '新对话', messages: [], updatedAt: Date.now() });
+    state.chatId = id;
+    state.sessionId = id;
+    state.messages = [];
+    state.system = '';
+    saveChats();
+    showView('chat');
+    rebuildEmpty();
+    setTimeout(() => $('input').focus(), 50);
+  }
+
+  function switchChat(id) {
+    if (id === state.chatId) return;
+    if (state.streaming) stopStreaming();
+    syncCurrent();
+    const cur = state.chats.find((c) => c.id === id);
+    if (!cur) return;
+    state.chatId = id;
+    state.sessionId = id;
+    state.messages = (cur.messages || []).map((m) => ({ ...m, streaming: false }));
+    state.system = cur.system || '';
+    saveChats();
+    rebuildEmpty();
+  }
+
+  function deleteChat(id) {
+    if (state.streaming && id === state.chatId) stopStreaming();
+    state.chats = state.chats.filter((c) => c.id !== id);
+    if (!state.chats.length) {
+      newChat();
+      renderChatList();
+      return;
+    }
+    if (state.chatId === id) {
+      state.chatId = state.chats[0].id;
+      state.sessionId = state.chatId;
+      state.messages = (state.chats[0].messages || []).map((m) => ({ ...m, streaming: false }));
+      rebuildEmpty();
+    }
+    saveChats();
+    renderChatList();
+  }
+
+  function fmtTime(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const now = new Date();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    if (d.toDateString() === now.toDateString()) return hh + ':' + mm;
+    return d.getMonth() + 1 + '/' + d.getDate() + ' ' + hh + ':' + mm;
+  }
+
+  function renderChatList() {
+    const box = $('chat-list');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!state.chats.length) {
+      box.innerHTML = '<p class="panel-tip">还没有对话</p>';
+      return;
+    }
+    state.chats.forEach((c) => {
+      const row = el('div', 'chat-item' + (c.id === state.chatId ? ' active' : ''));
+      const main = el('div', 'ci-main');
+      const t = el('div', 'ci-title');
+      t.textContent = c.title || '新对话';
+      const meta = el('div', 'ci-meta');
+      meta.textContent = (c.messages ? c.messages.length : 0) + ' 条 · ' + fmtTime(c.updatedAt);
+      main.appendChild(t);
+      main.appendChild(meta);
+      const del = el('button', 'ci-del');
+      del.type = 'button';
+      del.textContent = '删除';
+      del.onclick = (e) => {
+        e.stopPropagation();
+        deleteChat(c.id);
+      };
+      row.appendChild(main);
+      row.appendChild(del);
+      row.onclick = () => {
+        switchChat(c.id);
+        closeSheet('chat-sheet');
+      };
+      box.appendChild(row);
+    });
   }
 
   // ---------- 发送 ----------
@@ -759,9 +1017,10 @@
     autoGrow();
     rebuildEmpty();
 
-    const ctx = state.messages
+    let ctx = state.messages
       .filter((m) => !m.streaming)
       .map((m) => ({ role: m.role === 'ai' ? 'assistant' : m.role, content: m.content }));
+    if (state.system) ctx = [{ role: 'system', content: state.system }].concat(ctx);
 
     const body = {
       model: state.model,
@@ -815,6 +1074,7 @@
       if (ai.ui) ai.ui.render();
       scrollBottom(false);
       updateSend();
+      syncCurrent();
       if (!aborted && (ai.content || ai.reasoning)) loadMe();
     }
   }
@@ -901,6 +1161,7 @@
     // Esc 关闭弹层（外接键盘 / 桌面调试常用）
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
+      if (!$('chat-sheet').classList.contains('hidden')) return closeSheet('chat-sheet');
       if (!$('model-sheet').classList.contains('hidden')) return closeSheet('model-sheet');
       if (!$('settings-sheet').classList.contains('hidden')) return closeSheet('settings-sheet');
       if (!$('diag-sheet').classList.contains('hidden')) return closeSheet('diag-sheet');
@@ -942,9 +1203,35 @@
     };
     $('btn-settings').onclick = () => {
       updateModelBar();
+      paintSystem();
       refreshConnPanel();
       openSheet('settings-sheet');
     };
+    $('btn-chats').onclick = () => {
+      renderChatList();
+      openSheet('chat-sheet');
+    };
+    $('btn-new-chat').onclick = () => {
+      closeSheet('chat-sheet');
+      newChat();
+    };
+    $('btn-export').onclick = () => {
+      closeSheet('chat-sheet');
+      exportCurrent();
+    };
+    $('row-system').onclick = (e) => {
+      e.preventDefault();
+      editSystem();
+    };
+
+    // 代码块复制（内容会随流式刷新，用事件委托）
+    $('messages').addEventListener('click', (e) => {
+      const btn = e.target && e.target.closest ? e.target.closest('.code-copy') : null;
+      if (!btn) return;
+      const block = btn.closest('.code-block');
+      const pre = block ? block.querySelector('pre') : null;
+      copyText(pre ? pre.textContent : '', '代码已复制');
+    });
 
     // ---------- 连接面板 / 诊断 ----------
     function paintConn() {
@@ -1201,5 +1488,14 @@
       }
     }
     showView('login');
+
+    // 便于排查：#chats / #settings 直接打开对应面板
+    if (location.hash === '#chats') {
+      renderChatList();
+      openSheet('chat-sheet');
+    } else if (location.hash === '#settings') {
+      paintSystem();
+      openSheet('settings-sheet');
+    }
   })();
 })();

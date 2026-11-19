@@ -404,3 +404,89 @@ textarea:focus { outline: none; border-color: var(--accent-line); }
 .row:last-child { border-bottom: none; }
 .row span:first-child { color: var(--text-2); }
 .row span:last-child { color: var(--text); font-weight: 500; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ============ Markdown 正文 ============ */
+.msg-row.ai .content { white-space: normal; }
+.msg-row.user .content { white-space: pre-wrap; }
+
+.content > :first-child { margin-top: 0; }
+.content > :last-child { margin-bottom: 0; }
+.content p { margin: 0 0 9px; }
+.content h2, .content h3, .content h4, .content h5, .content h6 {
+  margin: 14px 0 8px; line-height: 1.35; font-weight: 650;
+}
+.content h2 { font-size: 17px; }
+.content h3 { font-size: 16px; }
+.content h4, .content h5, .content h6 { font-size: 15px; color: var(--text); }
+.content ul, .content ol { margin: 4px 0 10px; padding-left: 20px; }
+.content li { margin: 3px 0; }
+.content li.md-sub { margin-left: 12px; opacity: .92; }
+.content blockquote {
+  margin: 8px 0; padding: 2px 0 2px 11px;
+  border-left: 2px solid var(--accent-line); color: var(--text-2);
+}
+.content hr { border: none; border-top: 1px solid var(--line); margin: 14px 0; }
+.content a { color: var(--accent-2); text-decoration: none; border-bottom: 1px solid rgba(251, 191, 36, .35); }
+.content code.md-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .9em; padding: 1px 5px; border-radius: 5px;
+  background: rgba(255, 255, 255, .08); color: #ffd98b;
+}
+.content strong { color: #fff; font-weight: 650; }
+
+.md-table { overflow-x: auto; margin: 10px 0; -webkit-overflow-scrolling: touch; }
+.md-table table { border-collapse: collapse; font-size: 13px; min-width: 100%; }
+.md-table th, .md-table td {
+  border: 1px solid var(--line-2); padding: 7px 10px; text-align: left; white-space: nowrap;
+}
+.md-table th { background: rgba(255, 255, 255, .05); color: var(--text-2); font-weight: 600; }
+
+.code-block {
+  margin: 10px 0; border-radius: 12px; overflow: hidden;
+  border: 1px solid var(--line-2); background: #0d131d;
+}
+.code-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 10px; background: rgba(255, 255, 255, .045);
+  border-bottom: 1px solid var(--line);
+}
+.code-lang { font-size: 11.5px; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; }
+.code-copy {
+  border: none; background: transparent; color: var(--text-2);
+  font-size: 12px; padding: 3px 8px; border-radius: 6px;
+}
+.code-copy:active { background: rgba(255, 255, 255, .1); color: var(--text); }
+.code-block pre {
+  margin: 0; padding: 10px 12px; overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px; line-height: 1.6; color: #d7e0ee;
+}
+
+/* 气泡内的操作条 */
+.msg-actions { display: flex; gap: 4px; margin-top: 2px; }
+.msg-actions.hidden { display: none; }
+.msg-actions .act {
+  border: none; background: transparent; color: var(--text-3);
+  font-size: 12px; padding: 3px 8px; border-radius: 7px;
+}
+.msg-actions .act:active { background: rgba(255, 255, 255, .07); color: var(--text); }
+
+/* 对话记录 */
+.chat-list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.chat-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 12px; border-radius: 12px;
+  background: var(--surface-2); border: 1px solid var(--line);
+}
+.chat-item.active { border-color: var(--accent-line); background: var(--accent-soft); }
+.chat-item .ci-main { flex: 1; min-width: 0; }
+.chat-item .ci-title {
+  font-size: 14px; font-weight: 550; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.chat-item .ci-meta { font-size: 11.5px; color: var(--text-3); margin-top: 2px; }
+.chat-item .ci-del {
+  border: none; background: transparent; color: var(--text-3);
+  font-size: 12px; padding: 5px 8px; border-radius: 7px; flex: none;
+}
+.chat-item .ci-del:active { color: var(--danger); background: rgba(248, 113, 113, .12); }
