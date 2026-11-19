@@ -37,6 +37,8 @@
   const ACCESS_KEY = '';
 
   const APP_VERSION = '2.0.0';
+  // 模型列表拉不到时的兜底（与 direct.js 的 prepareBody 默认值一致）
+  const DEFAULT_MODEL = 'raccoon-chat-ml-5-5';
   const CAPTCHA_SDK = 'https://o.alicdn.com/captcha-frontend/aliyunCaptcha/AliyunCaptcha.js';
 
   // 推理强度阶梯（与桌面端一致）
@@ -1381,9 +1383,11 @@
     const attachments = state.attachments.slice();
     if (!text && !attachments.length) return;
 
+    // 模型列表没拿到时不要直接拦住用户：用官方默认模型兜底发出去，
+    // 只提示一次，能在设置里换回来就行。
     if (!state.model) {
-      toast('还没有可用模型，请稍后重试');
-      return;
+      state.model = DEFAULT_MODEL;
+      toast('模型列表未加载，已用默认模型发送');
     }
 
     const userMsg = { role: 'user', content: text, attachments };
@@ -2072,8 +2076,7 @@
     await Promise.all([loadMe(), loadCatalog()]);
     paintModelBar();
     paintMe();
-    if (!state.messages.length) rebuildThread();
-    else rebuildThread();
+    rebuildThread();
     updateSendState();
   }
 
