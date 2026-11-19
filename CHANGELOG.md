@@ -1,5 +1,16 @@
 # 变更记录
 
+## v1.3.0 —— 固定签名
+
+- **APK 改用固定 release 签名**。之前每次构建都由 CI 临时生成 debug 密钥，每个包的签名都不一样，导致新包无法覆盖安装，必须卸载重装。现在统一用仓库里的固定密钥（有效期到 2056 年），一次卸载之后就能正常覆盖升级。
+- **密钥不进仓库**：`raccoon-release.jks` 以 base64 存在 GitHub Actions Secrets（`KEYSTORE_BASE64` 等四项），仓库的 `.gitignore` 另外忽略 `*.jks` / `*.keystore`。
+- **构建后强制验签**：新增一步比对证书 SHA-256，与 workflow 里写死的期望值不一致直接让构建失败，避免哪天悄悄回退成临时签名。
+- **`versionCode` 递增**：取 CI 运行序号，`versionName` 同步为 `1.2.<run>`，保证每次出的包都能覆盖上一个。
+- **新增 `scripts/inject-signing.py`**：往 Capacitor 生成的 `build.gradle` 注入 `signingConfigs.release`，密码全部从环境变量读，可重复执行。
+- **新增 `scripts/set-version.py`**：写入版本号。
+- 构建类型从 `assembleDebug` 改为 `assembleRelease`（跳过 `lintVitalRelease`）；产物体积由 3.77 MB 降到 2.86 MB。
+- 未配置签名密钥的仓库仍会回退成 debug 构建，但会打印警告。
+
 ## v1.2.0 —— UI 精修 + 手机端自启
 
 ### 视觉
