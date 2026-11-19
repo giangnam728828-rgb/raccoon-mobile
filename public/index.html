@@ -80,7 +80,10 @@
     </div>
 
     <p id="login-msg" class="login-msg hidden" role="alert"></p>
-    <p class="login-foot">登录态只保存在代理服务本机</p>
+    <p class="login-foot">
+      <span id="login-proxy" class="mono">—</span>
+      <button id="btn-conn-login" class="linkish" type="button">修改</button>
+    </p>
   </div>
 
   <!-- 阿里云人机验证的挂载点（SDK 会把验证码渲染在这里） -->
@@ -163,6 +166,15 @@
         <div class="row"><span>当前模型</span><span id="set-model">—</span></div>
         <div class="row"><span>深度思考</span><span id="set-think">关</span></div>
         <div class="row"><span>剩余积分</span><span id="set-points">—</span></div>
+      </div>
+      <div class="set-group">
+        <div class="set-title">连接</div>
+        <button class="row row-btn" id="row-proxy" type="button">
+          <span>代理地址</span><span id="set-proxy" class="mono">—</span>
+        </button>
+        <button class="row row-btn" id="btn-test-conn" type="button">
+          <span>连接状态</span><span id="set-conn">检测中…</span>
+        </button>
       </div>
       <div class="set-group">
         <div class="set-title">积分</div>

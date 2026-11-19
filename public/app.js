@@ -10,7 +10,19 @@
   // 服务端设置了 ACCESS_KEY 时，构建时一并写入
   const ACCESS_KEY = '';
 
-  const BASE = API_BASE.replace(/\/+$/, '');
+  const PROXY_KEY = 'raccoon.proxy';
+
+  // 代理地址：优先用设置里手填的，其次用构建时写入的默认值
+  function apiBase() {
+    let saved = '';
+    try {
+      saved = localStorage.getItem(PROXY_KEY) || '';
+    } catch {
+      saved = '';
+    }
+    return String(saved || API_BASE).replace(/\/+$/, '');
+  }
+
   const CAPTCHA_SDK = 'https://o.alicdn.com/captcha-frontend/aliyunCaptcha/AliyunCaptcha.js';
 
   const state = {
@@ -91,13 +103,14 @@
 
     let res;
     try {
-      res = await fetch(BASE + path, {
+      res = await fetch(apiBase() + path, {
         method: opts.method || 'GET',
         headers: { ...headers, ...(opts.headers || {}) },
         body: opts.body ? JSON.stringify(opts.body) : undefined,
       });
-    } catch {
-      throw new Error('连不上代理服务，请确认 server.js 已启动、地址配置正确');
+    } catch (e) {
+      const reason = e && e.name === 'AbortError' ? '超时' : '网络不可达';
+      throw new Error('连不上 ' + (apiBase() || '当前页面') + '（' + reason + '）');
     }
 
     const text = await res.text();
@@ -658,7 +671,7 @@
     let aborted = false;
 
     try {
-      const res = await fetch(BASE + '/api/chat', {
+      const res = await fetch(apiBase() + '/api/chat', {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
@@ -720,7 +733,7 @@
         if (!ai.content && !ai.reasoning) ai.content = '（已停止）';
       } else {
         let msg = (e && e.message) || '请求失败';
-        if (/Failed to fetch|Load failed|NetworkError/i.test(msg)) msg = '连不上代理服务，请确认 server.js 已启动、地址配置正确';
+        if (/Failed to fetch|Load failed|NetworkError/i.test(msg)) msg = '连不上 ' + (apiBase() || '代理') + '，请检查代理是否在运行';
         ai.content += (ai.content ? '\n\n' : '') + '⚠️ ' + msg;
       }
     } finally {
@@ -856,7 +869,88 @@
     };
     $('btn-settings').onclick = () => {
       updateModelBar();
+      refreshConnPanel();
       openSheet('settings-sheet');
+    };
+
+    // 连接自查：显示当前实际请求的地址，并单独测一次 /api/health
+    function refreshConnPanel() {
+      const addr = $('set-proxy');
+      if (addr) addr.textContent = apiBase() || '同源';
+      testConn();
+    }
+
+    async function testConn() {
+      const el2 = $('set-conn');
+      if (!el2) return;
+      el2.textContent = '检测中…';
+      el2.className = '';
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 6000);
+      try {
+        const r = await fetch(apiBase() + '/api/health', { signal: ctrl.signal, cache: 'no-store' });
+        if (r.ok) {
+          el2.textContent = '已连接';
+          el2.className = 'conn-ok';
+        } else {
+          el2.textContent = 'HTTP ' + r.status;
+          el2.className = 'conn-bad';
+        }
+      } catch (e) {
+        el2.textContent = (e && e.name === 'AbortError') ? '超时' : '连不上';
+        el2.className = 'conn-bad';
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    $('btn-test-conn').onclick = (e) => {
+      e.preventDefault();
+      testConn();
+    };
+
+    function editProxy() {
+      const input = window.prompt('代理服务地址（例如 http://127.0.0.1:8799）\n留空则恢复默认', apiBase());
+      if (input === null) return;
+      const v = input.trim().replace(/\/+$/, '');
+      try {
+        if (v) localStorage.setItem(PROXY_KEY, v);
+        else localStorage.removeItem(PROXY_KEY);
+      } catch {}
+      $('login-proxy').textContent = apiBase() || '同源';
+      refreshConnPanel();
+      toast(v ? '代理地址已改为 ' + v : '已恢复默认地址');
+      hideMsg();
+      loadMe().then(async (ok) => {
+        if (ok) {
+          showView('chat');
+          enterChat();
+          return;
+        }
+        // 还没登录：重新拉一次登录配置，顺便验证新地址真的通
+        try {
+          const cfg = await api('/api/login/config');
+          if (cfg && cfg.ok) {
+            loginCfg = {
+              captcha: cfg.captcha || loginCfg.captcha,
+              nationCodes: cfg.nationCodes || loginCfg.nationCodes,
+              keyRequired: !!cfg.keyRequired,
+            };
+            renderNation();
+          }
+        } catch (e2) {
+          showMsg(e2.message);
+        }
+      });
+    }
+
+    $('row-proxy').onclick = (e) => {
+      e.preventDefault();
+      editProxy();
+    };
+    $('btn-conn-login').onclick = (e) => {
+      e.preventDefault();
+      editProxy();
     };
 
     $('think-toggle').onchange = (e) => {
@@ -904,6 +998,7 @@
   // ---------- 启动 ----------
   (async function init() {
     bind();
+    $('login-proxy').textContent = apiBase() || '同源';
     setupVoice();
     autoGrow();
     updateSend();
