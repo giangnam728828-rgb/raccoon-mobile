@@ -71,31 +71,59 @@ def write_adaptive_icons(res_dir):
 
 
 def write_background_color(res_dir):
+    """自适应图标的背景色。
+
+    Capacitor 模板里已经有 res/values/ic_launcher_background.xml，
+    再往 colors.xml 加一份同名 <color> 会让 aapt 报 Duplicate resources。
+    所以优先就地改写那个文件；不存在时才新建。
+    """
     values = os.path.join(res_dir, "values")
     os.makedirs(values, exist_ok=True)
-    colors = os.path.join(values, "colors.xml")
-
     entry = f'    <color name="ic_launcher_background">{ICON_BG}</color>'
 
-    if os.path.exists(colors):
-        with open(colors, encoding="utf-8") as f:
+    dedicated = os.path.join(values, "ic_launcher_background.xml")
+    colors = os.path.join(values, "colors.xml")
+
+    target = dedicated if os.path.exists(dedicated) else colors
+
+    if os.path.exists(target):
+        with open(target, encoding="utf-8") as f:
             text = f.read()
-        if "ic_launcher_background" in text:
+        if 'name="ic_launcher_background"' in text:
             text = re.sub(
                 r'<color name="ic_launcher_background">[^<]*</color>', entry.strip(), text
             )
-        else:
+        elif "</resources>" in text:
             text = text.replace("</resources>", entry + "\n</resources>")
-        with open(colors, "w", encoding="utf-8") as f:
-            f.write(text)
-    else:
-        with open(colors, "w", encoding="utf-8") as f:
-            f.write(
+        else:
+            text = (
                 '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n'
                 + entry
                 + "\n</resources>\n"
             )
-    print(f"✓ 已写入 ic_launcher_background = {ICON_BG}")
+    else:
+        text = (
+            '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n'
+            + entry
+            + "\n</resources>\n"
+        )
+
+    with open(target, "w", encoding="utf-8") as f:
+        f.write(text)
+
+    # 若两个文件都存在且都定义了同名颜色，清掉 colors.xml 里那份
+    if os.path.exists(dedicated) and os.path.exists(colors) and dedicated != colors:
+        with open(colors, encoding="utf-8") as f:
+            ctext = f.read()
+        if 'name="ic_launcher_background"' in ctext:
+            ctext = re.sub(
+                r'\s*<color name="ic_launcher_background">[^<]*</color>', '', ctext
+            )
+            with open(colors, "w", encoding="utf-8") as f:
+                f.write(ctext)
+            print("  （已清理 colors.xml 中重复的同名颜色）")
+
+    print(f"✓ 已写入 ic_launcher_background = {ICON_BG} → {os.path.basename(target)}")
     return 0
 
 
