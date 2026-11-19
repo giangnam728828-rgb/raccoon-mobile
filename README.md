@@ -2,26 +2,34 @@
 
 商汤小浣熊的移动端客户端，直接对接官方云端接口，支持**手机号登录 + 多模型切换 + 深度思考 + 语音输入**，可打包成 APK。
 
+> v1.4 起 **App 自己直连官方**，手机上不需要再跑任何代理服务。
+
 ## 组成
 
 | 文件 | 作用 |
 | --- | --- |
-| `server.js` | 本地代理。负责手机号登录、保管登录态、拼官方客户端请求头、转发流式对话 |
+| `public/direct.js` | 直连客户端：手机号 AES-128-CFB 加密、短信登录、会话与流式对话，全部在 App 内完成 |
 | `public/` | 移动端前端（登录页 + 聊天页），纯静态，无需构建 |
+| `server.js` | 可选的本地代理 + 网页版服务。给桌面浏览器用，或在 App 里手动开启「代理模式」时使用 |
 | `test/smoke.js` | 冒烟测试：自带假上游，不联网、不需要账号 |
-| `deploy/` | 手机端 proot 代理的开机自启脚本与说明 |
+| `test/direct-crypto.js` | 校验 App 内置的 AES-128-CFB 与 Node 的实现逐字节一致 |
+| `deploy/` | 手机端 proot 代理的开机自启脚本（只有用代理模式才需要） |
 | `capacitor.config.json` | Capacitor 配置，把前端装进 Android WebView |
 | `.github/workflows/build-apk.yml` | GitHub Actions，自动构建 APK |
 
-前端只跟 `server.js` 说话，`server.js` 再去连 `xiaohuanxiong.com`。
+## 快速开始
 
-## 快速开始（Web 版）
+### APK（推荐）
+
+构建后的 APK 打开即用：输入手机号 → 完成人机验证 → 收短信 → 登录。不配置任何地址。
+
+### 网页版
 
 ```bash
 node server.js          # 无需 npm install，零第三方依赖
 ```
 
-浏览器打开 `http://127.0.0.1:8799`，输入手机号 → 获取验证码 → 登录。
+浏览器打开 `http://127.0.0.1:8799`。这个地址下前端同源访问 `server.js`，由它代为请求官方接口。
 
 ## 登录方式
 
@@ -31,19 +39,30 @@ node server.js          # 无需 npm install，零第三方依赖
 
 1. 点「获取验证码」时，页面加载阿里云人机验证 SDK（`o.alicdn.com`）。
 2. 大部分情况下风控会放行（无痕验证），你不用点任何东西；命中风控才会弹滑块。
-3. 拿到 `captcha_token` 后提交给代理，代理把手机号按官方算法加密（AES-128-CFB）后请求 `/api/iam/v1/sms/send`。
-4. 输入收到的验证码，代理请求 `/api/iam/v1/auth/login/sms` 换取 `access_token`，并落盘保存。
+3. 拿到 `captcha_token` 后，App 把手机号按官方算法加密（AES-128-CFB）并请求 `/api/iam/v1/sms/send`。
+4. 输入收到的验证码，请求 `/api/iam/v1/auth/login/sms` 换取 `access_token`，保存在本机 `localStorage`。
 
 > 验证码只能由浏览器里的阿里云 SDK 换取，服务端伪造不了，所以这一步必须在页面里完成。
 > 如果验证码一直加载失败，先用 Token 登录兜底。
 
 ### Token 登录（保留）
 
-设置页以外的登录面板里有「使用 Token 登录」，粘贴 `access_token` 即可。代理会先拿它请求一次 `user_info` 验证，失效的 token 不会写进登录态。
+登录页「使用 Token 登录」，粘贴 `access_token` 即可。会先拿它请求一次 `user_info` 验证，失效的 token 不会被保存。
 
-## 部署给 APK 用
+## 连接诊断
 
-APK 里没有 Node 运行时，`server.js` 必须跑在**手机能访问到的机器**上（VPS / 家里电脑 / 云函数），然后在构建时把地址写进 APK。
+登录页底部固定显示「自动 · 直连官方」，点「诊断」可以看到：
+
+- 连接方式（直连 / 代理）
+- 网络（请求官方接口的往返耗时）
+- 登录态（本地是否存有 token）
+- 最近一次错误
+
+确实需要用代理时，在诊断面板点「改用代理」：地址留空会自动探测本机 `8799`，**并且必须通过 `/api/health` 的暗号校验**（返回 `ok:true` 且带 `upstream`/`service`）才会被保存 —— 避免再把返回 HTML 的服务误当成代理。
+
+## 代理模式（可选）
+
+只有这些情况才需要：想给桌面浏览器用、想跨设备共享一个登录态、或者所在网络直连官方不通。
 
 ```bash
 # 跑在一台服务器上，监听所有网卡
