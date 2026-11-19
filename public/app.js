@@ -40,10 +40,15 @@
     keyRequired: false,
   };
 
+  const ICO = {
+    chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V11M9.3 20V5M14.7 20v-6M20 20V8"/></svg>',
+    pen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+    split: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="7" rx="1.6"/><rect x="14" y="4" width="7" height="7" rx="1.6"/><rect x="3" y="14" width="7" height="7" rx="1.6"/><path d="M17.5 14v7M14 17.5h7"/></svg>',
+  };
   const SUGGEST = [
-    { icon: '📊', title: '数据分析', text: '帮我分析这组数据，给出结论' },
-    { icon: '✍️', title: '写一份文案', text: '写一段产品介绍文案' },
-    { icon: '🧩', title: '拆解任务', text: '把这个任务拆成可执行的步骤' },
+    { icon: ICO.chart, title: '数据分析', text: '帮我分析这组数据，给出结论' },
+    { icon: ICO.pen, title: '写一份文案', text: '写一段产品介绍文案' },
+    { icon: ICO.split, title: '拆解任务', text: '把这个任务拆成可执行的步骤' },
   ];
 
   // ---------- 视图 / 弹层 ----------
@@ -62,6 +67,8 @@
   function showMsg(text) {
     const el = $('login-msg');
     el.textContent = text;
+    // 「未登录」这类是状态说明，不是错误，用中性色
+    el.classList.toggle('info', /^未登录/.test(text));
     el.classList.remove('hidden');
   }
   function hideMsg() {
@@ -531,12 +538,22 @@
     wrap.innerHTML =
       '<div class="empty-mark">' +
       '<svg viewBox="0 0 48 48" fill="none" aria-hidden="true">' +
-      '<circle cx="24" cy="24" r="22" fill="#1c2433" stroke="#2a3548" stroke-width="1.5"/>' +
-      '<path d="M16 20c0-3 2-5 5-5s4 2 4 4-1 4-4 4-5-1-5-3z" fill="#f59e0b"/>' +
-      '<path d="M24 20c0-3 2-5 5-5s4 2 4 4-1 4-4 4-5-1-5-3z" fill="#fbbf24"/>' +
-      '<circle cx="19" cy="26" r="1.8" fill="#0b0f17"/>' +
-      '<circle cx="29" cy="26" r="1.8" fill="#0b0f17"/>' +
-      '<path d="M20 31c2 2 6 2 8 0" stroke="#0b0f17" stroke-width="1.6" stroke-linecap="round"/>' +
+      '<defs>' +
+      '<linearGradient id="em-face" x1="24" y1="12" x2="24" y2="41" gradientUnits="userSpaceOnUse">' +
+      '<stop stop-color="#2e3a4f"/><stop offset="1" stop-color="#161d29"/></linearGradient>' +
+      '<linearGradient id="em-ring" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">' +
+      '<stop stop-color="#f59e0b" stop-opacity=".5"/><stop offset="1" stop-color="#f59e0b" stop-opacity="0"/></linearGradient>' +
+      '</defs>' +
+      '<circle cx="24" cy="24" r="21" stroke="url(#em-ring)" stroke-width="1.2"/>' +
+      '<circle cx="11.5" cy="15" r="6.2" fill="#243044"/><circle cx="36.5" cy="15" r="6.2" fill="#243044"/>' +
+      '<circle cx="11.5" cy="15" r="3" fill="#f59e0b" opacity=".42"/><circle cx="36.5" cy="15" r="3" fill="#f59e0b" opacity=".42"/>' +
+      '<ellipse cx="24" cy="26" rx="15.6" ry="14.2" fill="url(#em-face)" stroke="#3a4a63" stroke-width="1"/>' +
+      '<path d="M9.8 23.4c0-3.6 3.3-6.1 7.4-6.1 3.8 0 6.3 2.5 6.3 5.9 0 3.5-2.9 6.2-6.7 6.2-4.1 0-7-2.4-7-6z" fill="#080c13"/>' +
+      '<path d="M38.2 23.4c0-3.6-3.3-6.1-7.4-6.1-3.8 0-6.3 2.5-6.3 5.9 0 3.5 2.9 6.2 6.7 6.2 4.1 0 7-2.4 7-6z" fill="#080c13"/>' +
+      '<circle cx="17.1" cy="23.8" r="2.15" fill="#fff"/><circle cx="30.9" cy="23.8" r="2.15" fill="#fff"/>' +
+      '<circle cx="17.5" cy="24.2" r="1.15" fill="#0b0f17"/><circle cx="31.3" cy="24.2" r="1.15" fill="#0b0f17"/>' +
+      '<path d="M24 29.6l-2.3 2.1h4.6L24 29.6z" fill="#f59e0b"/>' +
+      '<path d="M20.8 34.2c1.1 1.5 5.3 1.5 6.4 0" stroke="#7b8aa1" stroke-width="1.3" stroke-linecap="round"/>' +
       '</svg></div>' +
       '<h2>开始对话</h2><p class="empty-sub">选择模型、开启深度思考，直接提问</p><div class="suggest"></div>';
 
@@ -544,7 +561,9 @@
     SUGGEST.forEach((s) => {
       const chip = el('button', 'suggest-chip');
       chip.type = 'button';
-      chip.innerHTML = '<b>' + s.icon + ' ' + esc(s.title) + '</b>　' + esc(s.text);
+      chip.innerHTML =
+        '<span class="chip-ico">' + s.icon + '</span>' +
+        '<span class="chip-tx"><b>' + esc(s.title) + '</b><em>' + esc(s.text) + '</em></span>';
       chip.onclick = () => {
         $('input').value = s.text;
         autoGrow();
@@ -793,6 +812,13 @@
     });
     document.querySelectorAll('[data-close]').forEach((elm) => {
       elm.onclick = () => closeSheet(elm.getAttribute('data-close'));
+    });
+    // Esc 关闭弹层（外接键盘 / 桌面调试常用）
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (!$('model-sheet').classList.contains('hidden')) return closeSheet('model-sheet');
+      if (!$('settings-sheet').classList.contains('hidden')) return closeSheet('settings-sheet');
+      if (!$('token-panel').classList.contains('hidden')) $('token-panel').classList.add('hidden');
     });
 
     $('nation').onchange = () => {

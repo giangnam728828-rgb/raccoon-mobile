@@ -1,5 +1,31 @@
 # 变更记录
 
+## v1.2.0 —— UI 精修 + 手机端自启
+
+### 视觉
+
+- **重做 logo**：原来是一个黑圆底加两只橙色眼睛，像眼罩。改为完整浣熊脸（耳朵、深色面罩、高光瞳孔、琥珀鼻），登录页与空状态共用同一图形。
+- **AI 消息重新分层**：给 AI 气泡加了深色渐变底与内高光，之前气泡背景 `--surface-2` 和页面底色几乎同色，视觉上气泡是「消失」的，只剩一个思考块浮着。
+- **思考块改为旁注**：从「卡片套卡片」的双层圆角改成左侧琥珀竖线，仍可折叠，但不再抢正文的层级。
+- **滚动边缘渐隐**：消息区上下用 `mask-image` 做 18px 渐隐，快速滚动时不会出现被顶栏硬切的半截气泡。
+- **空状态建议卡**：彩色 emoji 换成线性 SVG 图标 + 琥珀底托，文案拆成「标题 / 说明」两行。
+- **发送按钮禁用态**改为灰色，之前是降低透明度的暗琥珀色，容易被误认为「坏掉的按钮」。
+- **登录页**：「未登录」这类状态提示改中性灰（原来用错误红），Token 面板加浅底卡片区分层级。
+- **设置抽屉**加分组标题（账号信息 / 积分），不再是一堆平铺的行。
+
+### 交互
+
+- 弹层支持 **Esc 关闭**（外接键盘或桌面调试时，原来按 Esc 没反应，遮罩会一直挡住点击）。
+- 建议卡点击后自动聚焦输入框。
+
+### 新增 `deploy/`
+
+- `termux-boot.sh`：Termux:Boot 开机脚本，等网络就绪后拉起 proot。
+- `start-raccoon.sh`：proot 内的守护循环，崩溃 3 秒后重启，日志超 2MB 自动轮转。
+- `README.md`：从装 Termux 到验证自启的完整步骤，含电池优化、`EADDRINUSE`、连不上等排查。
+
+> 手机重启后 proot 里的 Node 不会自己起来，APK 会一直转圈——这是之前没覆盖的场景。
+
 ## v1.1.0 —— 登录改造 + 全量排障
 
 ### 登录方式
@@ -8,8 +34,12 @@
   - 发码 `POST /api/iam/v1/sms/send`，登录 `POST /api/iam/v1/auth/login/sms`
   - 手机号按官方算法加密后再提交（AES-128-CFB，key 见 `server.js` 的 `PHONE_CIPHER_KEY`）
   - 人机验证在浏览器里用阿里云 SDK 完成，风控放行时无感通过，命中风控才弹滑块
-- **移除：微信扫码登录**。原来的 `/api/web/auth/v1/login_with_qrcode_code` 已被官方下线，二维码用的 `https://xiaohuanxiong.com/login/mp?code=...` 也不再是有效入口，所以「码刷不出来」不是样式问题，是接口没了。
-- **移除：授权码登录**。`/api/web/auth/v1/login_with_authorization_code` 同样已下线。
+- **移除：微信扫码登录**。原因不是接口下线——实测 `POST /api/web/auth/v1/login_with_qrcode_code` 仍返回 200。真正的问题是两点：
+  1. 二维码落地页 `https://xiaohuanxiong.com/login/mp?code=...` 现在是 **404**，微信扫码打开就是「页面不存在」；
+  2. 官方已改为**服务端签发** `qrcode_code`（`POST /api/iam/v1/auth/mp/qrcode` 返回 `qr-<uuid>`），旧代码用 `crypto.randomBytes` 自己生成 code，服务端不认识，轮询永远 `pending`。
+
+  即使修好协议 bug，这两道墙也过不去，所以移除。
+- **移除：授权码登录**。`/api/web/auth/v1/login_with_authorization_code` 接口仍在（返回 `200035 authorization_code_not_found_error`），但 APK 里拿不到微信 OAuth 的 `authorization_code`（需要公众号 AppID 与签名），移动端无法闭环，故移除。
 - **保留：Token 登录**，并补了一次 `user_info` 校验，失效 token 不再被写进登录态。
 
 ### 修复的 Bug

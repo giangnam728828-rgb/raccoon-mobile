@@ -9,6 +9,7 @@
 | `server.js` | 本地代理。负责手机号登录、保管登录态、拼官方客户端请求头、转发流式对话 |
 | `public/` | 移动端前端（登录页 + 聊天页），纯静态，无需构建 |
 | `test/smoke.js` | 冒烟测试：自带假上游，不联网、不需要账号 |
+| `deploy/` | 手机端 proot 代理的开机自启脚本与说明 |
 | `capacitor.config.json` | Capacitor 配置，把前端装进 Android WebView |
 | `.github/workflows/build-apk.yml` | GitHub Actions，自动构建 APK |
 
@@ -75,6 +76,20 @@ HOST=0.0.0.0 PORT=8799 ACCESS_KEY=你的随机密钥 node server.js
 产物在 Actions 的 artifacts 里：`raccoon-mobile-apk`。
 
 构建脚本会：注入地址与密钥 → 生成 Android 工程 → 打开明文 HTTP 开关 → 打包 debug APK。构建前会先跑一遍 `npm test`，测试不过就不出包。
+
+## 手机端自启（proot）
+
+APK 通过 `127.0.0.1:8799` 连本机代理。手机重启后 proot 里的 Node 不会自动起来，
+APP 会一直转圈。自启方案见 **[deploy/README.md](deploy/README.md)**，核心是：
+
+```bash
+# Termux 侧
+cp deploy/termux-boot.sh ~/.termux/boot/raccoon-proxy.sh && chmod +x ~/.termux/boot/raccoon-proxy.sh
+# proot 侧
+cp deploy/start-raccoon.sh /root/start-raccoon.sh && chmod +x /root/start-raccoon.sh
+```
+
+需要 Termux:Boot，并且把 Termux 的电池优化设为「无限制」。
 
 ## 测试
 
