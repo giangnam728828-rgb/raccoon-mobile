@@ -9,6 +9,8 @@
 - **新增原生 HTTP 插件**（`android-ext/RaccoonHttpPlugin.java`）：用系统网络栈发请求，`OkHttp` 之外不引依赖，响应按行推回 JS。既绕开 CORS / 预检，又保持流式输出的手感，支持「停止生成」时真正断开连接。
 - 插件由 `scripts/inject-native-plugin.py` 在 CI 里注入（`android/` 是每次重新生成的，不能直接提交），并在 `MainActivity.onCreate` 里 `super` 之前注册。
 - 前端 `public/native.js` 直接走原生桥的 `nativePromise` / `addListener`，不依赖 `@capacitor/core` 的 `registerPlugin`。
+- 原生请求会带上 WebView 里的 cookie，并把响应里的 `Set-Cookie` 写回，同时复用 WebView 的 UA —— 行为与浏览器一致，不会被网关当成爬虫或缺登录态。
+- 诊断面板会显示当前实际走的是「原生通道」还是「浏览器通道」。
 - **浏览器通道保留**：原生通道不可用时自动回退 `fetch`，并补了一次不带 cookie 的重试。
 
 ### 更像完整客户端

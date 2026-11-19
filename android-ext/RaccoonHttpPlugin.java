@@ -1,5 +1,7 @@
 package com.raccoon.mobile;
 
+import android.webkit.CookieManager;
+
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -16,6 +18,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -50,6 +53,9 @@ public class RaccoonHttpPlugin extends Plugin {
             return;
         }
 
+        // 用 WebView 的 UA，避免被网关当成爬虫
+        final String ua = currentUserAgent();
+
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -61,6 +67,9 @@ public class RaccoonHttpPlugin extends Plugin {
                     conn.setReadTimeout(180000);
                     conn.setInstanceFollowRedirects(true);
                     conn.setDoInput(true);
+                    if (ua != null && !ua.isEmpty()) {
+                        conn.setRequestProperty("User-Agent", ua);
+                    }
 
                     if (headers != null) {
                         Iterator<String> keys = headers.keys();
@@ -71,6 +80,15 @@ public class RaccoonHttpPlugin extends Plugin {
                                 conn.setRequestProperty(k, v);
                             }
                         }
+                    }
+
+                    // 把 WebView 里登录得到的 cookie 一起带上（某些网关只认 cookie）
+                    try {
+                        String cookie = CookieManager.getInstance().getCookie(url);
+                        if (cookie != null && !cookie.isEmpty()) {
+                            conn.setRequestProperty("Cookie", cookie);
+                        }
+                    } catch (Exception ignored) {
                     }
 
                     if (body != null && !body.isEmpty() && !"GET".equalsIgnoreCase(method)) {
@@ -86,6 +104,19 @@ public class RaccoonHttpPlugin extends Plugin {
                     live.put(id, conn);
 
                     int code = conn.getResponseCode();
+
+                    // 响应里的 Set-Cookie 写回 WebView 的 cookie 仓库，和浏览器行为保持一致
+                    try {
+                        Map<String, List<String>> hf = conn.getHeaderFields();
+                        List<String> setCookies = hf.get("Set-Cookie");
+                        if (setCookies != null && !setCookies.isEmpty()) {
+                            CookieManager cm = CookieManager.getInstance();
+                            for (String c : setCookies) cm.setCookie(url, c);
+                            cm.flush();
+                        }
+                    } catch (Exception ignored) {
+                    }
+
                     emit(id, "head", "status", String.valueOf(code));
 
                     InputStream is = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
@@ -172,6 +203,16 @@ public class RaccoonHttpPlugin extends Plugin {
                 }
             }
         }).start();
+    }
+
+    private String currentUserAgent() {
+        try {
+            if (getBridge() != null && getBridge().getWebView() != null) {
+                return getBridge().getWebView().getSettings().getUserAgentString();
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
     }
 
     private void emit(String id, String type, String key, Object value) {

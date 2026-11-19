@@ -1311,10 +1311,11 @@
         net.className = '';
       }
 
+      const viaNative = !!(window.RaccoonNative && window.RaccoonNative.available());
       const r = isDirect() ? await window.RaccoonDirect.probe(8000) : await probeProxy(proxyBase());
       const ok = !!r.ok;
       const label = ok
-        ? '已连接' + (r.ms ? ' · ' + r.ms + 'ms' : '')
+        ? '已连接' + (r.ms ? ' · ' + r.ms + 'ms' : '') + (isDirect() ? (viaNative ? ' · 原生通道' : ' · 浏览器通道') : '')
         : r.message || r.reason || '连不上';
 
       if (el2) {
