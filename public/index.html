@@ -81,8 +81,8 @@
 
     <p id="login-msg" class="login-msg hidden" role="alert"></p>
     <p class="login-foot">
-      <span id="login-proxy" class="mono">—</span>
-      <button id="btn-conn-login" class="linkish" type="button">修改</button>
+      <span id="login-proxy" class="mono">自动 · 直连官方</span>
+      <button id="btn-conn-login" class="linkish" type="button">诊断</button>
     </p>
   </div>
 
@@ -169,11 +169,12 @@
       </div>
       <div class="set-group">
         <div class="set-title">连接</div>
-        <button class="row row-btn" id="row-proxy" type="button">
-          <span>代理地址</span><span id="set-proxy" class="mono">—</span>
-        </button>
+        <div class="row"><span>连接方式</span><span id="set-mode">自动 · 直连官方</span></div>
         <button class="row row-btn" id="btn-test-conn" type="button">
           <span>连接状态</span><span id="set-conn">检测中…</span>
+        </button>
+        <button class="row row-btn" id="row-proxy" type="button">
+          <span>代理设置</span><span id="set-proxy" class="mono">未启用</span>
         </button>
       </div>
       <div class="set-group">
@@ -188,8 +189,34 @@
   </div>
 </div>
 
+<!-- ============ 连接诊断 ============ -->
+<div id="diag-sheet" class="sheet hidden">
+  <div class="sheet-scrim" data-close="diag-sheet"></div>
+  <div class="sheet-panel">
+    <div class="sheet-head">
+      <span>连接诊断</span>
+      <button class="icon-btn sm" data-close="diag-sheet" type="button">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="set-group">
+        <div class="row"><span>连接方式</span><span id="diag-mode">—</span></div>
+        <div class="row"><span>网络</span><span id="diag-net">检测中…</span></div>
+        <div class="row"><span>登录态</span><span id="diag-auth">—</span></div>
+        <div class="row"><span>最近错误</span><span id="diag-err">—</span></div>
+      </div>
+      <div class="set-group">
+        <button id="diag-retest" class="btn" type="button">重新检测</button>
+        <button id="diag-proxy" class="btn" type="button">改用代理</button>
+        <button id="diag-direct" class="btn" type="button">恢复直连</button>
+      </div>
+      <p class="panel-tip">直连模式下由 App 自己完成人机验证和短信登录，手机里不需要再跑任何服务。</p>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+<script src="/direct.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

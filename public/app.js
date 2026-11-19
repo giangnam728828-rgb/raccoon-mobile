@@ -5,22 +5,33 @@
 
   const $ = (id) => document.getElementById(id);
 
-  // 构建 APK 时由 CI 替换成代理地址；Web 版同源，留空即可
+  // 构建期注入的旧代理地址：仅作为「手动开启代理」时的默认候选，平时不启用
   const API_BASE = '';
-  // 服务端设置了 ACCESS_KEY 时，构建时一并写入
+  // 服务端设置了 ACCESS_KEY 时，构建时一并写入（仅代理模式使用）
   const ACCESS_KEY = '';
 
-  const PROXY_KEY = 'raccoon.proxy';
+  // 注意：这个名字换了，老版本填错的地址不会被继承
+  const PROXY_KEY = 'raccoon.proxy.v2';
 
-  // 代理地址：优先用设置里手填的，其次用构建时写入的默认值
-  function apiBase() {
+  // 代理地址：只有用户显式开启「代理模式」才会用到；默认空 = 直连官方
+  function proxyBase() {
     let saved = '';
     try {
       saved = localStorage.getItem(PROXY_KEY) || '';
     } catch {
       saved = '';
     }
-    return String(saved || API_BASE).replace(/\/+$/, '');
+    return String(saved).trim().replace(/\/+$/, '');
+  }
+
+  function isDirect() {
+    return !proxyBase();
+  }
+
+  function connLabel() {
+    const p = proxyBase();
+    if (!p) return '自动 · 直连官方';
+    return '代理 · ' + p.replace(/^https?:\/\//, '');
   }
 
   const CAPTCHA_SDK = 'https://o.alicdn.com/captcha-frontend/aliyunCaptcha/AliyunCaptcha.js';
@@ -37,6 +48,8 @@
     phone: '',
     points: 0,
     verificationId: '',
+    sessionId: '',
+    lastError: '',
     nation: '+86',
     phoneForLogin: '',
   };
@@ -97,20 +110,41 @@
   }
 
   // ---------- 请求 ----------
+  // 默认直连官方（App 自己完成登录与聊天）；只有在设置里指定了代理才走代理。
   async function api(path, opts = {}) {
+    const base = proxyBase();
+    if (base) return proxyApi(base, path, opts);
+
+    let data;
+    try {
+      data = await window.RaccoonDirect.handle(path, opts);
+    } catch (e) {
+      if (e && e.auth === false) {
+        logout(true);
+      }
+      throw e;
+    }
+    if (data && data.auth === false) {
+      logout(true);
+      throw new Error(data.message || '登录已失效，请重新登录');
+    }
+    return data || { ok: false };
+  }
+
+  async function proxyApi(base, path, opts = {}) {
     const headers = { 'content-type': 'application/json' };
     if (ACCESS_KEY) headers['x-access-key'] = ACCESS_KEY;
 
     let res;
     try {
-      res = await fetch(apiBase() + path, {
+      res = await fetch(base + path, {
         method: opts.method || 'GET',
         headers: { ...headers, ...(opts.headers || {}) },
         body: opts.body ? JSON.stringify(opts.body) : undefined,
       });
     } catch (e) {
       const reason = e && e.name === 'AbortError' ? '超时' : '网络不可达';
-      throw new Error('连不上 ' + (apiBase() || '当前页面') + '（' + reason + '）');
+      throw new Error('连不上代理 ' + base + '（' + reason + '）');
     }
 
     const text = await res.text();
@@ -119,7 +153,10 @@
       try {
         data = JSON.parse(text);
       } catch {
-        data = { ok: false, message: '服务返回异常（HTTP ' + res.status + '）' };
+        data = {
+          ok: false,
+          message: base + ' 返回的不是小浣熊代理（HTTP ' + res.status + '），请重新检测',
+        };
       }
     }
 
@@ -167,9 +204,12 @@
 
   function logout(silent) {
     state.loggedIn = false;
+    // 直连模式本地也存了 token，退出要一起清掉
+    if (window.RaccoonDirect) window.RaccoonDirect.clearAuth();
     state.messages = [];
     state.model = '';
     state.verificationId = '';
+    state.sessionId = '';
     if (state.abort) {
       try {
         state.abort.abort();
@@ -362,7 +402,12 @@
       if (!d.ok) {
         btn.disabled = false;
         btn.textContent = original;
-        return showMsg(d.message || '验证码发送失败');
+        const msg = d.message || '验证码发送失败';
+        state.lastError = msg + (d.code ? '（' + d.code + '）' : '');
+        if (/人机验证/.test(msg)) {
+          return showMsg(msg + '，请再点一次「获取验证码」重试');
+        }
+        return showMsg(msg);
       }
 
       state.verificationId = d.verificationId;
@@ -374,7 +419,8 @@
     } catch (e) {
       btn.disabled = false;
       btn.textContent = original;
-      showMsg(e.message || '验证码发送失败');
+      state.lastError = (e && e.message) || '验证码发送失败';
+      showMsg(state.lastError);
     }
   }
 
@@ -437,6 +483,7 @@
 
   // ---------- 进入聊天 ----------
   async function enterChat() {
+    if (!state.sessionId) state.sessionId = window.RaccoonDirect.newSessionId();
     await Promise.all([loadMe(), loadCatalog()]);
     if (!state.model && state.models.length) state.model = state.models[0].id;
     updateModelBar();
@@ -640,6 +687,67 @@
     }
   }
 
+  // 代理模式下的流式对话（备用通道）
+  async function streamViaProxy(body, ai) {
+    const base = proxyBase();
+    const res = await fetch(base + '/api/chat', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...(ACCESS_KEY ? { 'x-access-key': ACCESS_KEY } : {}),
+      },
+      body: JSON.stringify(body),
+      signal: state.abort.signal,
+    });
+    const ctype = res.headers.get('content-type') || '';
+    if (!res.ok || ctype.indexOf('application/json') === 0) {
+      const d = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        logout(true);
+        throw new Error(d.message || '登录已失效，请重新登录');
+      }
+      throw new Error(d.message || '对话请求失败（HTTP ' + res.status + '）');
+    }
+    if (!res.body) throw new Error('当前环境不支持流式响应');
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const t = line.trim();
+        if (!t || t.indexOf('data:') !== 0) continue;
+        const payload = t.slice(5).trim();
+        if (!payload || payload === '[DONE]') continue;
+
+        let frame;
+        try {
+          frame = JSON.parse(payload);
+        } catch {
+          continue;
+        }
+        if (frame.error) {
+          ai.content += (ai.content ? '\n\n' : '') + '⚠️ ' + (frame.error.message || '上游返回错误');
+          continue;
+        }
+        const choice = frame.choices && frame.choices[0];
+        if (!choice) continue;
+        const delta = choice.delta || choice.message || {};
+        if (typeof delta.content === 'string' && delta.content) ai.content += delta.content;
+        const r = delta.reasoning_content || delta.reasoning;
+        if (typeof r === 'string' && r) ai.reasoning += r;
+      }
+      scheduleRender(ai);
+    }
+  }
+
   async function send() {
     if (state.streaming) return;
     const input = $('input');
@@ -671,61 +779,22 @@
     let aborted = false;
 
     try {
-      const res = await fetch(apiBase() + '/api/chat', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          ...(ACCESS_KEY ? { 'x-access-key': ACCESS_KEY } : {}),
-        },
-        body: JSON.stringify(body),
-        signal: state.abort.signal,
-      });
-      const ctype = res.headers.get('content-type') || '';
-      if (!res.ok || ctype.indexOf('application/json') === 0) {
-        const d = await res.json().catch(() => ({}));
-        if (res.status === 401) {
-          logout(true);
-          throw new Error(d.message || '登录已失效，请重新登录');
-        }
-        throw new Error(d.message || '对话请求失败（HTTP ' + res.status + '）');
-      }
-      if (!res.body) throw new Error('当前环境不支持流式响应');
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          const t = line.trim();
-          if (!t || t.indexOf('data:') !== 0) continue;
-          const payload = t.slice(5).trim();
-          if (!payload || payload === '[DONE]') continue;
-
-          let frame;
-          try {
-            frame = JSON.parse(payload);
-          } catch {
-            continue;
+      if (isDirect()) {
+        await window.RaccoonDirect.chat(
+          { ...body, sessionId: state.sessionId, signal: state.abort.signal },
+          {
+            onDelta: (d) => {
+              if (d.error) ai.content += (ai.content ? '\n\n' : '') + '⚠️ ' + d.error;
+              else {
+                if (d.content) ai.content += d.content;
+                if (d.reasoning) ai.reasoning += d.reasoning;
+              }
+              scheduleRender(ai);
+            },
           }
-          if (frame.error) {
-            ai.content += (ai.content ? '\n\n' : '') + '⚠️ ' + (frame.error.message || '上游返回错误');
-            continue;
-          }
-          const choice = frame.choices && frame.choices[0];
-          if (!choice) continue;
-          const delta = choice.delta || choice.message || {};
-          if (typeof delta.content === 'string' && delta.content) ai.content += delta.content;
-          const r = delta.reasoning_content || delta.reasoning;
-          if (typeof r === 'string' && r) ai.reasoning += r;
-        }
-        scheduleRender(ai);
+        );
+      } else {
+        await streamViaProxy(body, ai);
       }
     } catch (e) {
       if (e && e.name === 'AbortError') {
@@ -733,7 +802,10 @@
         if (!ai.content && !ai.reasoning) ai.content = '（已停止）';
       } else {
         let msg = (e && e.message) || '请求失败';
-        if (/Failed to fetch|Load failed|NetworkError/i.test(msg)) msg = '连不上 ' + (apiBase() || '代理') + '，请检查代理是否在运行';
+        if (/Failed to fetch|Load failed|NetworkError/i.test(msg)) {
+          msg = isDirect() ? '连不上官方服务，请检查网络' : '连不上代理 ' + proxyBase() + '，请重新检测';
+        }
+        if (e && e.auth === false) msg = '登录已失效，请重新登录';
         ai.content += (ai.content ? '\n\n' : '') + '⚠️ ' + msg;
       }
     } finally {
@@ -831,6 +903,7 @@
       if (e.key !== 'Escape') return;
       if (!$('model-sheet').classList.contains('hidden')) return closeSheet('model-sheet');
       if (!$('settings-sheet').classList.contains('hidden')) return closeSheet('settings-sheet');
+      if (!$('diag-sheet').classList.contains('hidden')) return closeSheet('diag-sheet');
       if (!$('token-panel').classList.contains('hidden')) $('token-panel').classList.add('hidden');
     });
 
@@ -873,85 +946,178 @@
       openSheet('settings-sheet');
     };
 
-    // 连接自查：显示当前实际请求的地址，并单独测一次 /api/health
+    // ---------- 连接面板 / 诊断 ----------
+    function paintConn() {
+      const mode = connLabel();
+      const l1 = $('login-proxy');
+      const l2 = $('set-mode');
+      const l3 = $('set-proxy');
+      const l4 = $('diag-mode');
+      if (l1) l1.textContent = mode;
+      if (l2) l2.textContent = mode;
+      if (l3) l3.textContent = isDirect() ? '未启用' : proxyBase().replace(/^https?:\/\//, '');
+      if (l4) l4.textContent = mode;
+    }
+
     function refreshConnPanel() {
-      const addr = $('set-proxy');
-      if (addr) addr.textContent = apiBase() || '同源';
+      paintConn();
       testConn();
     }
 
-    async function testConn() {
-      const el2 = $('set-conn');
-      if (!el2) return;
-      el2.textContent = '检测中…';
-      el2.className = '';
+    // 探测一个地址是不是真的小浣熊代理（不是 200 就算通，必须能对上暗号）
+    async function probeProxy(base) {
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 6000);
+      const timer = setTimeout(() => ctrl.abort(), 3000);
+      const started = Date.now();
       try {
-        const r = await fetch(apiBase() + '/api/health', { signal: ctrl.signal, cache: 'no-store' });
-        if (r.ok) {
-          el2.textContent = '已连接';
-          el2.className = 'conn-ok';
-        } else {
-          el2.textContent = 'HTTP ' + r.status;
-          el2.className = 'conn-bad';
+        const r = await fetch(base + '/api/health', { signal: ctrl.signal, cache: 'no-store' });
+        if (!r.ok) return { ok: false, ms: Date.now() - started, reason: 'HTTP ' + r.status };
+        const d = await r.json().catch(() => null);
+        if (!d || d.ok !== true || !(d.upstream || d.service)) {
+          return { ok: false, ms: Date.now() - started, reason: '该地址不是小浣熊代理' };
         }
+        return { ok: true, ms: Date.now() - started, data: d };
       } catch (e) {
-        el2.textContent = (e && e.name === 'AbortError') ? '超时' : '连不上';
-        el2.className = 'conn-bad';
+        return {
+          ok: false,
+          ms: Date.now() - started,
+          reason: e && e.name === 'AbortError' ? '超时' : '连不上',
+        };
       } finally {
         clearTimeout(timer);
       }
     }
 
-    $('btn-test-conn').onclick = (e) => {
-      e.preventDefault();
-      testConn();
-    };
+    function proxyCandidates() {
+      const list = [];
+      const push = (v) => {
+        v = String(v || '').trim().replace(/\/+$/, '');
+        if (v && list.indexOf(v) < 0) list.push(v);
+      };
+      push(proxyBase());
+      push(API_BASE);
+      push('http://127.0.0.1:8799');
+      push('http://localhost:8799');
+      const host = location.hostname;
+      if (host && host !== 'localhost' && host !== '127.0.0.1') push('http://' + host + ':8799');
+      return list;
+    }
 
-    function editProxy() {
-      const input = window.prompt('代理服务地址（例如 http://127.0.0.1:8799）\n留空则恢复默认', apiBase());
-      if (input === null) return;
-      const v = input.trim().replace(/\/+$/, '');
-      try {
-        if (v) localStorage.setItem(PROXY_KEY, v);
-        else localStorage.removeItem(PROXY_KEY);
-      } catch {}
-      $('login-proxy').textContent = apiBase() || '同源';
-      refreshConnPanel();
-      toast(v ? '代理地址已改为 ' + v : '已恢复默认地址');
+    async function autoDetectProxy() {
+      const list = proxyCandidates();
+      for (let i = 0; i < list.length; i++) {
+        const r = await probeProxy(list[i]);
+        if (r.ok) return list[i];
+      }
+      return '';
+    }
+
+    async function testConn() {
+      const el2 = $('set-conn');
+      const net = $('diag-net');
+      if (el2) {
+        el2.textContent = '检测中…';
+        el2.className = '';
+      }
+      if (net) {
+        net.textContent = '检测中…';
+        net.className = '';
+      }
+
+      const r = isDirect() ? await window.RaccoonDirect.probe(8000) : await probeProxy(proxyBase());
+      const ok = !!r.ok;
+      const label = ok
+        ? '已连接' + (r.ms ? ' · ' + r.ms + 'ms' : '')
+        : r.message || r.reason || '连不上';
+
+      if (el2) {
+        el2.textContent = ok ? '已连接' : label;
+        el2.className = ok ? 'conn-ok' : 'conn-bad';
+      }
+      if (net) {
+        net.textContent = label;
+        net.className = ok ? 'conn-ok' : 'conn-bad';
+      }
+      return ok;
+    }
+
+    function openDiag() {
+      paintConn();
+      const a = $('diag-auth');
+      if (a) a.textContent = window.RaccoonDirect.hasAuth() ? '已登录' : '未登录';
+      const err = $('diag-err');
+      if (err) err.textContent = state.lastError || '—';
+      openSheet('diag-sheet');
+      testConn();
+    }
+
+    function applyConnChange(tip) {
+      paintConn();
+      toast(tip);
       hideMsg();
-      loadMe().then(async (ok) => {
+      refreshConnPanel();
+      // 端口 / 通道变了，旧登录态不一定还能用
+      window.RaccoonDirect.clearAuth();
+      loadMe().then((ok) => {
         if (ok) {
           showView('chat');
           enterChat();
-          return;
-        }
-        // 还没登录：重新拉一次登录配置，顺便验证新地址真的通
-        try {
-          const cfg = await api('/api/login/config');
-          if (cfg && cfg.ok) {
-            loginCfg = {
-              captcha: cfg.captcha || loginCfg.captcha,
-              nationCodes: cfg.nationCodes || loginCfg.nationCodes,
-              keyRequired: !!cfg.keyRequired,
-            };
-            renderNation();
-          }
-        } catch (e2) {
-          showMsg(e2.message);
+        } else {
+          showView('login');
         }
       });
     }
 
+    async function useProxy() {
+      const input = window.prompt(
+        '代理服务地址（例如 http://127.0.0.1:8799）\n留空 = 自动检测本机代理；点「取消」则不改',
+        proxyBase() || ''
+      );
+      if (input === null) return;
+
+      let v = input.trim().replace(/\/+$/, '');
+      if (!v) {
+        toast('正在检测本机代理…');
+        v = await autoDetectProxy();
+        if (!v) {
+          toast('没找到可用的代理，保持直连');
+          return;
+        }
+      }
+
+      const r = await probeProxy(v);
+      if (!r.ok) {
+        toast(v + '：' + (r.reason || '无法使用'));
+        return;
+      }
+      try {
+        localStorage.setItem(PROXY_KEY, v);
+      } catch {}
+      applyConnChange('已切换到代理 ' + v);
+    }
+
+    function useDirect() {
+      try {
+        localStorage.removeItem(PROXY_KEY);
+      } catch {}
+      applyConnChange('已恢复直连');
+    }
+
     $('row-proxy').onclick = (e) => {
       e.preventDefault();
-      editProxy();
+      useProxy();
     };
     $('btn-conn-login').onclick = (e) => {
       e.preventDefault();
-      editProxy();
+      openDiag();
     };
+    $('btn-test-conn').onclick = (e) => {
+      e.preventDefault();
+      testConn();
+    };
+    $('diag-retest').onclick = () => testConn();
+    $('diag-proxy').onclick = () => useProxy();
+    $('diag-direct').onclick = () => useDirect();
 
     $('think-toggle').onchange = (e) => {
       state.thinking = e.target.checked;
@@ -998,7 +1164,7 @@
   // ---------- 启动 ----------
   (async function init() {
     bind();
-    $('login-proxy').textContent = apiBase() || '同源';
+    $('login-proxy').textContent = connLabel();
     setupVoice();
     autoGrow();
     updateSend();
@@ -1017,18 +1183,22 @@
     }
     renderNation();
 
-    try {
-      const d = await api('/api/me');
-      if (d && d.ok) {
-        applyMe(d);
-        showView('chat');
-        enterChat();
-        return;
+    // 本地没有 token 就别去问接口，省得开局报「未登录」
+    const localAuth = window.RaccoonDirect.hasAuth() || !isDirect();
+    if (localAuth) {
+      try {
+        const d = await api('/api/me');
+        if (d && d.ok) {
+          applyMe(d);
+          showView('chat');
+          enterChat();
+          return;
+        }
+      } catch (e) {
+        // 未登录是正常状态，不用报错；网络 / 密钥 / 配置问题才提示
+        const m = (e && e.message) || '';
+        if (m && !/^未登录|登录已失效/.test(m)) showMsg(m);
       }
-    } catch (e) {
-      // 未登录是正常状态，不用报错；网络 / 密钥 / 配置问题才提示
-      const m = (e && e.message) || '';
-      if (m && !/^未登录|登录已失效/.test(m)) showMsg(m);
     }
     showView('login');
   })();

@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       proxy_url:
-        description: '代理服务地址（APK 内 WebView 调用，例如 https://raccoon.example.com）'
-        required: true
-        default: 'http://127.0.0.1:8799'
+        description: '（可选）代理地址。App 默认直连官方，留空即可；填了则作为备用通道预置'
+        required: false
+        default: ''
       access_key:
         description: '代理访问密钥（服务端设了 ACCESS_KEY 才需要填）'
         required: false
@@ -59,25 +59,25 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-34" "build-tools;34.0.0" > /dev/null
 
-      - name: 写入代理地址与访问密钥
+      - name: 写入备用代理地址与访问密钥
         env:
-          PROXY_URL: ${{ github.event.inputs.proxy_url || 'http://127.0.0.1:8799' }}
+          PROXY_URL: ${{ github.event.inputs.proxy_url || '' }}
           ACCESS_KEY: ${{ github.event.inputs.access_key || '' }}
         run: |
           node -e '
             const fs = require("fs");
             const p = "public/app.js";
             let s = fs.readFileSync(p, "utf8");
-            s = s.replace(/const API_BASE = \x27\x27;/, "const API_BASE = \x27" + process.env.PROXY_URL + "\x27;");
+            const url = process.env.PROXY_URL || "";
+            if (url) {
+              s = s.replace(/const API_BASE = \x27\x27;/, "const API_BASE = \x27" + url + "\x27;");
+            }
             s = s.replace(/const ACCESS_KEY = \x27\x27;/, "const ACCESS_KEY = \x27" + (process.env.ACCESS_KEY || "") + "\x27;");
             fs.writeFileSync(p, s);
           '
           grep -n "const API_BASE" public/app.js
           grep -n "const ACCESS_KEY" public/app.js
-          case "$PROXY_URL" in
-            http://127.0.0.1*|http://localhost*)
-              echo "::warning::代理地址是 127.0.0.1，只有手机上自己在跑 server.js 时才能用" ;;
-          esac
+          echo "App 默认直连官方；未填 proxy_url 时不会预置任何代理地址。"
 
       - name: 生成 Android 工程
         run: npx cap add android
