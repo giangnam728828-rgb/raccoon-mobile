@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f17">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>小浣熊</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<!-- ============ 登录 ============ -->
+<section id="login-view" class="view active">
+  <div class="login-wrap">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+        <circle cx="24" cy="24" r="22" fill="url(#bg)"/>
+        <path d="M16 20c0-3 2-5 5-5s4 2 4 4-1 4-4 4-5-1-5-3z" fill="#f59e0b"/>
+        <path d="M24 20c0-3 2-5 5-5s4 2 4 4-1 4-4 4-5-1-5-3z" fill="#fbbf24"/>
+        <circle cx="19" cy="26" r="1.8" fill="#0b0f17"/>
+        <circle cx="29" cy="26" r="1.8" fill="#0b0f17"/>
+        <path d="M20 31c2 2 6 2 8 0" stroke="#0b0f17" stroke-width="1.6" stroke-linecap="round"/>
+        <defs><linearGradient id="bg" x1="0" y1="0" x2="48" y2="48">
+          <stop stop-color="#1c2433"/><stop offset="1" stop-color="#141a26"/>
+        </linearGradient></defs>
+      </svg>
+      <h1>小浣熊</h1>
+      <p class="brand-sub">多模型 · 深度思考 · 手机端</p>
+    </div>
+
+    <div class="login-actions">
+      <button id="btn-qr" class="btn primary">
+        <svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9V5a2 2 0 0 1 2-2h4M21 9V5a2 2 0 0 0-2-2h-4M3 15v4a2 2 0 0 0 2 2h4M21 15v4a2 2 0 0 1-2 2h-4"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>
+        微信扫码登录
+      </button>
+      <button id="btn-code" class="btn">使用授权码</button>
+      <button id="btn-token" class="btn ghost">粘贴 Token</button>
+    </div>
+
+    <div id="qr-panel" class="panel hidden">
+      <div class="panel-head">
+        <span>微信扫码</span>
+        <button class="icon-btn sm" data-back="qr">✕</button>
+      </div>
+      <p class="panel-tip">用微信扫描下方二维码，完成登录</p>
+      <div class="qr-frame"><img id="qr-img" alt="登录二维码"></div>
+      <p id="qr-status" class="panel-tip status">等待扫码…</p>
+      <button id="btn-qr-refresh" class="btn small">刷新二维码</button>
+    </div>
+
+    <div id="code-panel" class="panel hidden">
+      <div class="panel-head">
+        <span>授权码登录</span>
+        <button class="icon-btn sm" data-back="code">✕</button>
+      </div>
+      <textarea id="code-input" placeholder="粘贴授权码，或含 code= 的完整回调地址"></textarea>
+      <button id="btn-code-go" class="btn primary">兑换登录</button>
+    </div>
+
+    <div id="token-panel" class="panel hidden">
+      <div class="panel-head">
+        <span>Token 登录</span>
+        <button class="icon-btn sm" data-back="token">✕</button>
+      </div>
+      <textarea id="token-input" placeholder="粘贴 access_token（JWT）"></textarea>
+      <button id="btn-token-go" class="btn primary">登录</button>
+    </div>
+
+    <p id="login-msg" class="login-msg hidden"></p>
+    <p class="login-foot">登录态仅保存在本机</p>
+  </div>
+</section>
+
+<!-- ============ 聊天 ============ -->
+<section id="chat-view" class="view">
+  <header class="topbar">
+    <div class="top-left">
+      <span class="status-dot" id="status-dot"></span>
+      <span class="top-name" id="me-name">小浣熊</span>
+    </div>
+    <div class="top-right">
+      <span class="points" id="points-badge">积分</span>
+      <button id="btn-models" class="icon-btn" title="选择模型">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      </button>
+      <button id="btn-settings" class="icon-btn" title="设置">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="model-bar">
+    <button id="model-name" class="model-pill">
+      <span class="model-pill-label">模型</span>
+      <span class="model-pill-val" id="model-name-val">默认</span>
+      <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+    <label class="switch">
+      <input type="checkbox" id="think-toggle">
+      <span class="switch-track"><span class="switch-thumb"></span></span>
+      <span class="switch-label">深度思考</span>
+    </label>
+  </div>
+
+  <main id="messages" class="messages">
+    <div id="empty-state" class="empty-state">
+      <div class="empty-mark">
+        <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+          <circle cx="24" cy="24" r="22" fill="#1c2433" stroke="#2a3548" stroke-width="1.5"/>
+          <path d="M16 20c0-3 2-5 5-5s4 2 4 4-1 4-4 4-5-1-5-3z" fill="#f59e0b"/>
+          <path d="M24 20c0-3 2-5 5-5s4 2 4 4-1 4-4 4-5-1-5-3z" fill="#fbbf24"/>
+          <circle cx="19" cy="26" r="1.8" fill="#0b0f17"/>
+          <circle cx="29" cy="26" r="1.8" fill="#0b0f17"/>
+          <path d="M20 31c2 2 6 2 8 0" stroke="#0b0f17" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <h2>开始对话</h2>
+      <p class="empty-sub">选择模型、开启深度思考，直接提问</p>
+      <div class="suggest" id="suggest"></div>
+    </div>
+  </main>
+
+  <footer class="composer">
+    <button id="btn-voice" class="icon-btn" title="语音输入">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></svg>
+    </button>
+    <div class="input-wrap">
+      <textarea id="input" rows="1" placeholder="输入消息，或点麦克风说话…"></textarea>
+    </div>
+    <button id="btn-send" class="send-btn" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4 20-7z"/></svg>
+    </button>
+  </footer>
+</section>
+
+<!-- ============ 模型选择 ============ -->
+<div id="model-sheet" class="sheet hidden">
+  <div class="sheet-scrim" data-close="model-sheet"></div>
+  <div class="sheet-panel">
+    <div class="sheet-head">
+      <span>选择模型</span>
+      <button class="icon-btn sm" data-close="model-sheet">✕</button>
+    </div>
+    <div id="model-list" class="sheet-body"></div>
+  </div>
+</div>
+
+<!-- ============ 设置 ============ -->
+<div id="settings-sheet" class="sheet hidden">
+  <div class="sheet-scrim" data-close="settings-sheet"></div>
+  <div class="sheet-panel">
+    <div class="sheet-head">
+      <span>设置</span>
+      <button class="icon-btn sm" data-close="settings-sheet">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="set-group">
+        <div class="row"><span>账号</span><span id="set-uid">—</span></div>
+        <div class="row"><span>当前模型</span><span id="set-model">—</span></div>
+        <div class="row"><span>深度思考</span><span id="set-think">关</span></div>
+        <div class="row"><span>剩余积分</span><span id="set-points">—</span></div>
+      </div>
+      <div class="set-group">
+        <button id="btn-checkin" class="btn">领取每日积分</button>
+        <button id="btn-onboarding" class="btn">领取新手奖励</button>
+      </div>
+      <div class="set-group">
+        <button id="btn-logout" class="btn danger">退出登录</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

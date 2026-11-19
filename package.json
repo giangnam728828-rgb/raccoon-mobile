@@ -1,0 +1,22 @@
+{
+  "name": "raccoon-mobile",
+  "version": "1.0.0",
+  "description": "商汤小浣熊移动端客户端（多模型 + 深度思考）",
+  "private": true,
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build:web": "echo 前端为静态资源，无需构建",
+    "cap:sync": "npx cap copy android",
+    "apk": "cd android && ./gradlew assembleDebug --no-daemon"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/cli": "^6.2.0",
+    "@capacitor/core": "^6.2.0"
+  }
+}
