@@ -3,6 +3,7 @@
 
 用法： python3 scripts/set-version.py <run_number> [build.gradle 路径]
 """
+import json
 import pathlib
 import re
 import sys
@@ -21,8 +22,16 @@ try:
 except ValueError:
     vc = 1
 
+# versionName 用 package.json 里的语义化版本，versionCode 仍取 CI 运行序号
+version_name = "1.5.0"
+try:
+    pkg = pathlib.Path(__file__).resolve().parent.parent / "package.json"
+    version_name = json.loads(pkg.read_text(encoding="utf-8")).get("version", version_name)
+except Exception:
+    pass
+
 new = re.sub(r"versionCode\s+\d+", f"versionCode {vc}", src, count=1)
-new = re.sub(r'versionName\s+"[^"]*"', f'versionName "1.2.{vc}"', new, count=1)
+new = re.sub(r'versionName\s+"[^"]*"', f'versionName "{version_name}"', new, count=1)
 
 if new != src:
     target.write_text(new, encoding="utf-8")
