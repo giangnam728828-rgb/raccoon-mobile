@@ -1,60 +1,103 @@
-// 小浣熊移动端 —— 前端逻辑
-// 登录：手机号 + 短信验证码（人机验证在浏览器里完成）／粘贴 Token
+// 小浣熊移动端 —— 应用逻辑
+// 结构：壳（标签页/弹层）→ 会话 → 流式对话 → 能力（模型/推理/附件/提示词）
 (() => {
   'use strict';
 
   const $ = (id) => document.getElementById(id);
+  const el = (tag, cls) => {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    return e;
+  };
+  const ico = (name, cls) => {
+    const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    s.setAttribute('class', 'icon' + (cls ? ' ' + cls : ''));
+    const u = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    u.setAttribute('href', '#i-' + name);
+    s.appendChild(u);
+    return s;
+  };
+  const esc = (s) =>
+    String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  // 构建期注入的旧代理地址：仅作为「手动开启代理」时的默认候选，平时不启用
+  const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
+
+  // ============================================================
+  // 常量
+  // ============================================================
+  const DEVICE_KEY = 'raccoon.device';
+  const PROXY_KEY = 'raccoon.proxy.v2';
+  const CHATS_KEY = 'raccoon.chats.v1';
+  const ACTIVE_KEY = 'raccoon.chat.active';
+  const PREF_KEY = 'raccoon.prefs.v2';
+  const SYSTEM_KEY = 'raccoon.system.v2';
+
+  // 构建期注入的旧代理地址（可选）
   const API_BASE = '';
-  // 服务端设置了 ACCESS_KEY 时，构建时一并写入（仅代理模式使用）
   const ACCESS_KEY = '';
 
-  // 注意：这个名字换了，老版本填错的地址不会被继承
-  const PROXY_KEY = 'raccoon.proxy.v2';
-
-  // 代理地址：只有用户显式开启「代理模式」才会用到；默认空 = 直连官方
-  function proxyBase() {
-    let saved = '';
-    try {
-      saved = localStorage.getItem(PROXY_KEY) || '';
-    } catch {
-      saved = '';
-    }
-    return String(saved).trim().replace(/\/+$/, '');
-  }
-
-  function isDirect() {
-    return !proxyBase();
-  }
-
-  function connLabel() {
-    const p = proxyBase();
-    if (!p) return '自动 · 直连官方';
-    return '代理 · ' + p.replace(/^https?:\/\//, '');
-  }
-
+  const APP_VERSION = '2.0.0';
   const CAPTCHA_SDK = 'https://o.alicdn.com/captcha-frontend/aliyunCaptcha/AliyunCaptcha.js';
 
+  // 推理强度阶梯（与桌面端一致）
+  const EFFORTS = [
+    { id: 'off', name: '关闭', desc: '不展示思考过程，响应最快' },
+    { id: 'minimal', name: '极简', desc: '几乎不推理，适合闲聊' },
+    { id: 'low', name: '轻量', desc: '简单问题的快速推理' },
+    { id: 'medium', name: '标准', desc: '速度与质量的平衡点' },
+    { id: 'high', name: '深入', desc: '多步推理，适合分析题' },
+    { id: 'xhigh', name: '更深', desc: '复杂问题，耗时更长' },
+    { id: 'max', name: '最强', desc: '最完整的推理，最慢' },
+  ];
+
+  const SYSTEM_PRESETS = [
+    { label: '严谨技术编辑', text: '你是一名严谨的技术编辑。回答先给结论，再给依据；不确定的地方明确说出不确定，不要编造。' },
+    { label: '中文润色', text: '你是一名中文写作编辑。保持原意，只改表达：去掉冗余、拆开长句、统一术语，输出润色后的文本。' },
+    { label: '代码助手', text: '你是一名资深工程师。给可直接运行的代码，先说改动点，再给代码，最后说明边界与风险。' },
+    { label: '结构化分析', text: '你是一名分析师。用「结论—证据—风险—下一步」四段式组织回答，能列表就不用长段落。' },
+    { label: '翻译', text: '你是一名专业译者。中文与英文互译，保留原文语气与格式，专有名词首次出现时附原文。' },
+  ];
+
+  const SUGGESTIONS = [
+    { icon: 'bolt', title: '深度分析一个话题', text: '请用结构化方式分析：' },
+    { icon: 'edit', title: '写一段文案', text: '帮我写一段产品介绍文案，产品是：' },
+    { icon: 'file', title: '总结这段内容', text: '帮我把下面的内容总结成要点：\n\n' },
+    { icon: 'link', title: '拆解成可执行步骤', text: '把这个目标拆成可执行的步骤：' },
+  ];
+
+  // ============================================================
+  // 状态
+  // ============================================================
   const state = {
+    // 壳
+    tab: 'chat',
+    booted: false,
+    // 账号
     loggedIn: false,
-    models: [],
-    model: '',
-    thinking: false,
-    streaming: false,
-    messages: [],
     uid: '',
     name: '',
     phone: '',
     points: 0,
     verificationId: '',
-    sessionId: '',
+    phoneForLogin: '',
+    nation: '+86',
     lastError: '',
+    // 模型
+    models: [],
+    model: '',
+    effort: 'off',
+    // 对话
     chats: [],
     chatId: '',
+    sessionId: '',
+    messages: [],
     system: '',
-    nation: '+86',
-    phoneForLogin: '',
+    streaming: false,
+    abort: null,
+    // 附件草稿
+    attachments: [],
+    // 其他
+    chatFilter: '',
   };
 
   let loginCfg = {
@@ -68,63 +111,74 @@
     keyRequired: false,
   };
 
-  const ICO = {
-    chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V11M9.3 20V5M14.7 20v-6M20 20V8"/></svg>',
-    pen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
-    split: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="7" rx="1.6"/><rect x="14" y="4" width="7" height="7" rx="1.6"/><rect x="3" y="14" width="7" height="7" rx="1.6"/><path d="M17.5 14v7M14 17.5h7"/></svg>',
-  };
-  const SUGGEST = [
-    { icon: ICO.chart, title: '数据分析', text: '帮我分析这组数据，给出结论' },
-    { icon: ICO.pen, title: '写一份文案', text: '写一段产品介绍文案' },
-    { icon: ICO.split, title: '拆解任务', text: '把这个任务拆成可执行的步骤' },
-  ];
-
-  // ---------- 视图 / 弹层 ----------
-  function showView(name) {
-    document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
-    const v = $(name + '-view');
-    if (v) v.classList.add('active');
+  // ============================================================
+  // 本地存储
+  // ============================================================
+  function lsGet(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw == null ? fallback : raw;
+    } catch {
+      return fallback;
+    }
   }
-  function openSheet(id) {
-    $(id).classList.remove('hidden');
+  function lsSet(key, val) {
+    try {
+      localStorage.setItem(key, val);
+    } catch {}
   }
-  function closeSheet(id) {
-    $(id).classList.add('hidden');
+  function lsDel(key) {
+    try {
+      localStorage.removeItem(key);
+    } catch {}
   }
-
-  function showMsg(text) {
-    const el = $('login-msg');
-    el.textContent = text;
-    // 「未登录」这类是状态说明，不是错误，用中性色
-    el.classList.toggle('info', /^未登录/.test(text));
-    el.classList.remove('hidden');
+  function readJSON(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch {
+      return fallback;
+    }
   }
-  function hideMsg() {
-    $('login-msg').classList.add('hidden');
-  }
-
-  let toastTimer = null;
-  function toast(text) {
-    const el = $('toast');
-    el.textContent = text;
-    el.classList.add('show');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+  function writeJSON(key, val) {
+    try {
+      if (val == null) localStorage.removeItem(key);
+      else localStorage.setItem(key, JSON.stringify(val));
+    } catch {}
   }
 
-  // ---------- 请求 ----------
-  // 默认直连官方（App 自己完成登录与聊天）；只有在设置里指定了代理才走代理。
+  function savePrefs() {
+    writeJSON(PREF_KEY, { model: state.model, effort: state.effort, nation: state.nation });
+  }
+  function loadPrefs() {
+    const p = readJSON(PREF_KEY, null) || {};
+    if (p.model) state.model = p.model;
+    if (p.effort && EFFORTS.some((e) => e.id === p.effort)) state.effort = p.effort;
+    if (p.nation) state.nation = p.nation;
+  }
+
+  // ============================================================
+  // 通道（直连 / 代理）
+  // ============================================================
+  function proxyBase() {
+    return String(lsGet(PROXY_KEY, '') || '').trim().replace(/\/+$/, '');
+  }
+  function isDirect() {
+    return !proxyBase();
+  }
+  function connLabel() {
+    const p = proxyBase();
+    if (!p) return '自动 · 直连官方';
+    return '代理 · ' + p.replace(/^https?:\/\//, '');
+  }
+
   async function api(path, opts = {}) {
     const base = proxyBase();
-    if (base) return proxyApi(base, path, opts);
-
     let data;
     try {
-      data = await window.RaccoonDirect.handle(path, opts);
+      data = base ? await proxyApi(base, path, opts) : await window.RaccoonDirect.handle(path, opts);
     } catch (e) {
-      if (e && e.auth === false) {
-        logout(true);
-      }
+      if (e && e.auth === false) logout(true);
       throw e;
     }
     if (data && data.auth === false) {
@@ -146,8 +200,7 @@
         body: opts.body ? JSON.stringify(opts.body) : undefined,
       });
     } catch (e) {
-      const reason = e && e.name === 'AbortError' ? '超时' : '网络不可达';
-      throw new Error('连不上代理 ' + base + '（' + reason + '）');
+      throw new Error('连不上代理 ' + base + '（' + (e && e.name === 'AbortError' ? '超时' : '网络不可达') + '）');
     }
 
     const text = await res.text();
@@ -156,16 +209,10 @@
       try {
         data = JSON.parse(text);
       } catch {
-        data = {
-          ok: false,
-          message: base + ' 返回的不是小浣熊代理（HTTP ' + res.status + '），请重新检测',
-        };
+        data = { ok: false, message: base + ' 返回的不是小浣熊代理（HTTP ' + res.status + '）' };
       }
     }
-
-    if (data.keyRequired) {
-      throw new Error('需要访问密钥：服务端设置了 ACCESS_KEY，请在构建时填入');
-    }
+    if (data.keyRequired) throw new Error('需要访问密钥：请在构建时填入 ACCESS_KEY');
     if (res.status === 401 && data.auth === false) {
       logout(true);
       throw new Error(data.message || '登录已失效，请重新登录');
@@ -173,72 +220,90 @@
     return data;
   }
 
-  // ---------- 登录态 ----------
-  function applyMe(d) {
-    state.loggedIn = true;
-    state.uid = d.uid || '';
-    state.name = d.name || '小浣熊';
-    state.phone = d.phone || '';
-    state.points = d.points || 0;
-    $('me-name').textContent = state.name;
-    $('points-badge').textContent = '积分 ' + state.points;
-    $('set-name').textContent = state.name;
-    $('set-phone').textContent = state.phone || '—';
-    $('set-points').textContent = state.points;
-    $('status-dot').classList.add('on');
+  // ============================================================
+  // 壳：标签页 / 弹层 / Toast
+  // ============================================================
+  function showView(name) {
+    document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
+    const v = $(name + '-view');
+    if (v) v.classList.add('active');
   }
 
-  async function loadMe() {
+  function setTab(name) {
+    state.tab = name;
+    document.querySelectorAll('.pane').forEach((p) => {
+      p.classList.toggle('active', p.getAttribute('data-pane') === name);
+    });
+    document.querySelectorAll('.tab').forEach((t) => {
+      const on = t.getAttribute('data-tab') === name;
+      t.classList.toggle('active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    if (name === 'history') renderChatList();
+    if (name === 'me') paintMe();
+    if (name === 'chat') requestAnimationFrame(() => scrollBottom(true));
+  }
+
+  const sheetStack = [];
+  function openSheet(id) {
+    const s = $(id);
+    if (!s) return;
+    s.classList.remove('hidden');
+    if (sheetStack.indexOf(id) < 0) sheetStack.push(id);
+  }
+  function closeSheet(id) {
+    const s = $(id);
+    if (!s) return;
+    s.classList.add('hidden');
+    const i = sheetStack.indexOf(id);
+    if (i >= 0) sheetStack.splice(i, 1);
+  }
+  function closeTopSheet() {
+    const id = sheetStack[sheetStack.length - 1];
+    if (id) closeSheet(id);
+    return !!id;
+  }
+
+  let toastTimer = null;
+  function toast(text) {
+    const t = $('toast');
+    t.textContent = text;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  function haptic() {
     try {
-      const d = await api('/api/me');
-      if (d.ok) applyMe(d);
-      return d.ok;
-    } catch (e) {
-      return false;
-    }
+      if (navigator.vibrate) navigator.vibrate(8);
+    } catch {}
   }
 
-  function onLoginSuccess() {
-    hideMsg();
-    $('token-panel').classList.add('hidden');
-    showView('chat');
-    enterChat();
+  // ============================================================
+  // 输入区高度 / 键盘
+  // ============================================================
+  function autoGrow() {
+    const ta = $('input');
+    if (!ta) return;
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight || 0, 132) + 'px';
   }
 
-  function logout(silent) {
-    state.loggedIn = false;
-    // 直连模式本地也存了 token，退出要一起清掉
-    if (window.RaccoonDirect) window.RaccoonDirect.clearAuth();
-    state.messages = [];
-    state.model = '';
-    state.verificationId = '';
-    state.sessionId = '';
-    state.chats = [];
-    state.chatId = '';
-    if (state.abort) {
-      try {
-        state.abort.abort();
-      } catch {}
-      state.abort = null;
-    }
-    $('messages').innerHTML = '';
-    $('status-dot').classList.remove('on');
-    clearInterval(countdownTimer);
-    const sendBtn = $('btn-send-code');
-    sendBtn.disabled = false;
-    sendBtn.textContent = '获取验证码';
-    $('code').value = '';
-    showView('login');
-    rebuildEmpty();
-    if (!silent) {
-      api('/api/logout', { method: 'POST' }).catch(() => {});
-      toast('已退出登录');
-    }
+  // ============================================================
+  // 登录
+  // ============================================================
+  function showMsg(text) {
+    const box = $('login-msg');
+    box.textContent = text;
+    box.classList.toggle('info', /^未登录/.test(text));
+    box.classList.remove('hidden');
+  }
+  function hideMsg() {
+    $('login-msg').classList.add('hidden');
   }
 
-  // ---------- 人机验证（阿里云）----------
   let captchaLoader = null;
-  let captchaInstance = null;
+  let capRunning = null;
 
   function loadCaptchaSdk() {
     if (typeof window.initAliyunCaptcha === 'function') return Promise.resolve();
@@ -264,8 +329,6 @@
     return captchaLoader;
   }
 
-  // 拉起验证码，成功时 resolve(captcha_token)
-  let capRunning = null;
   function runCaptcha() {
     if (capRunning) return capRunning;
 
@@ -300,15 +363,12 @@
                 if (!reason || reason === 'userDismiss') finish(reject, new Error('已取消人机验证'));
               },
               getInstance: (inst) => {
-                captchaInstance = inst;
-                // SDK 初始化是异步的（要拉动态资源），太早 show() 会被忽略
                 const wait = Math.max(0, 1200 - (Date.now() - startedAt));
                 setTimeout(async () => {
                   if (settled) return;
                   try {
                     if (inst && typeof inst.show === 'function') await inst.show();
                     else $('cap-button').click();
-                    // 无痕验证：风控放行时用户什么都不用点，直接拿到 token
                     if (inst && typeof inst.startTracelessVerification === 'function') {
                       await inst.startTracelessVerification();
                     }
@@ -335,19 +395,22 @@
         throw e;
       });
 
-    // 成功后也解除占用，下次重新走一遍
-    capRunning.then(() => {
-      capRunning = null;
-    }).catch(() => {});
+    capRunning
+      .then(() => {
+        capRunning = null;
+      })
+      .catch(() => {});
 
     return capRunning;
   }
 
-  // ---------- 登录：手机号 ----------
   function renderNation() {
     const sel = $('nation');
     sel.innerHTML = '';
-    const list = loginCfg.nationCodes && loginCfg.nationCodes.length ? loginCfg.nationCodes : [{ code: '+86', label: '中国大陆' }];
+    const list =
+      loginCfg.nationCodes && loginCfg.nationCodes.length
+        ? loginCfg.nationCodes
+        : [{ code: '+86', label: '中国大陆' }];
     list.forEach((n) => {
       const o = document.createElement('option');
       o.value = n.code;
@@ -362,7 +425,7 @@
   let countdownTimer = null;
   function startCountdown(sec) {
     const btn = $('btn-send-code');
-    let left = Math.max(1, Math.round(sec) || 60);
+    let left = clamp(Math.round(sec) || 60, 1, 300);
     clearInterval(countdownTimer);
     const tick = () => {
       if (left <= 0) {
@@ -390,7 +453,6 @@
     const btn = $('btn-send-code');
     if (btn.disabled) return;
     btn.disabled = true;
-    const original = btn.textContent;
     btn.textContent = '验证中…';
 
     try {
@@ -406,12 +468,10 @@
 
       if (!d.ok) {
         btn.disabled = false;
-        btn.textContent = original;
+        btn.textContent = '获取验证码';
         const msg = d.message || '验证码发送失败';
         state.lastError = msg + (d.code ? '（' + d.code + '）' : '');
-        if (/人机验证/.test(msg)) {
-          return showMsg(msg + '，请再点一次「获取验证码」重试');
-        }
+        if (/人机验证/.test(msg)) return showMsg(msg + '，请再点一次「获取验证码」重试');
         return showMsg(msg);
       }
 
@@ -423,7 +483,7 @@
       toast('验证码已发送');
     } catch (e) {
       btn.disabled = false;
-      btn.textContent = original;
+      btn.textContent = '获取验证码';
       state.lastError = (e && e.message) || '验证码发送失败';
       showMsg(state.lastError);
     }
@@ -462,7 +522,6 @@
     }
   }
 
-  // ---------- 登录：粘贴 Token ----------
   async function doTokenLogin() {
     hideMsg();
     const token = $('token-input').value.trim();
@@ -486,457 +545,754 @@
     }
   }
 
-  // ---------- 进入聊天 ----------
-  async function enterChat() {
-    if (!state.chats.length) loadChats();
-    await Promise.all([loadMe(), loadCatalog()]);
-    if (!state.model && state.models.length) state.model = state.models[0].id;
-    updateModelBar();
-    rebuildEmpty();
+  function onLoginSuccess() {
+    hideMsg();
+    $('token-panel').classList.add('hidden');
+    showView('app');
+    setTab('chat');
+    enterApp();
+  }
+
+  function logout(silent) {
+    state.loggedIn = false;
+    if (window.RaccoonDirect) window.RaccoonDirect.clearAuth();
+    stopStreaming();
+    state.messages = [];
+    state.model = '';
+    state.verificationId = '';
+    state.sessionId = '';
+    state.chats = [];
+    state.chatId = '';
+    state.attachments = [];
+    const box = $('messages');
+    if (box) box.innerHTML = '';
+    $('status-dot').classList.remove('on');
+    clearInterval(countdownTimer);
+    const sendBtn = $('btn-send-code');
+    if (sendBtn) {
+      sendBtn.disabled = false;
+      sendBtn.textContent = '获取验证码';
+    }
+    $('code').value = '';
+    showView('login');
+    if (!silent) {
+      api('/api/logout', { method: 'POST' }).catch(() => {});
+      toast('已退出登录');
+    }
+  }
+
+  // ============================================================
+  // 账号
+  // ============================================================
+  function applyMe(d) {
+    state.loggedIn = true;
+    state.uid = d.uid || '';
+    state.name = d.name || '小浣熊';
+    state.phone = d.phone || '';
+    state.points = d.points || 0;
+    paintMe();
+    const dot = $('status-dot');
+    if (dot) dot.classList.add('on');
+    const pb = $('points-badge');
+    if (pb) pb.textContent = String(state.points);
+  }
+
+  async function loadMe() {
+    try {
+      const d = await api('/api/me');
+      if (d.ok) applyMe(d);
+      return d.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  function paintMe() {
+    const name = state.name || '小浣熊';
+    const set = (id, v) => {
+      const e = $(id);
+      if (e) e.textContent = v;
+    };
+    set('me-name', name);
+    set('me-phone', state.phone || '—');
+    set('set-points', String(state.points ?? '—'));
+    set('set-chat-count', String(state.chats.length || 0));
+    const m = currentModel();
+    set('set-model-short', m ? shortModelName(m) : '—');
+    // 行标签已经是「深度思考」，值只显示档位，避免读成「深度思考 深度思考 · 标准」
+    set('set-think', reasoningSupported() ? (EFFORTS.find((x) => x.id === state.effort) || {}).name || '关闭' : '不支持');
+    set('appbar-title', name);
+    const t = $('set-system');
+    if (t) t.textContent = state.system ? (state.system.length > 12 ? state.system.slice(0, 12) + '…' : state.system) : '未设置';
+    const mode = $('set-mode');
+    if (mode) mode.textContent = connLabel();
+    const note = $('build-note');
+    if (note) note.textContent = '小浣熊移动端 v' + APP_VERSION;
+  }
+
+  // ============================================================
+  // 模型与推理
+  // ============================================================
+  function currentModel() {
+    return state.models.find((m) => m.id === state.model) || null;
+  }
+  function shortModelName(m) {
+    const n = String((m && m.name) || '').trim();
+    return n.length > 14 ? n.slice(0, 14) + '…' : n || '默认';
+  }
+  function reasoningSupported() {
+    const m = currentModel();
+    return !!(m && m.supportsReasoning === true);
+  }
+  function visionSupported() {
+    const m = currentModel();
+    return !!(m && m.supportsImages === true);
+  }
+  function effortName() {
+    if (!reasoningSupported()) return '当前模型不支持';
+    const e = EFFORTS.find((x) => x.id === state.effort);
+    return e && e.id !== 'off' ? '深度思考 · ' + e.name : '深度思考 · 关闭';
+  }
+  // 药丸上的短标签：把状态说清楚，而不是只说「深度思考」
+  function effortChipLabel() {
+    if (!reasoningSupported()) return '不支持推理';
+    const e = EFFORTS.find((x) => x.id === state.effort);
+    if (!e || e.id === 'off') return '思考 · 关';
+    return '思考 · ' + e.name;
+  }
+
+  // 模型归一化：直连通道给的是 {id,name,contextLength,supportsImages,supportsReasoning}，
+  // 官方原始结构是 {name,display_name,context_window,supports_reasoning}。
+  // 两种形状都接受，避免代理版本不一致时模型列表变成一串裸 id。
+  function normalizeModel(raw) {
+    if (!raw) return null;
+    const id = raw.id || raw.name || raw.model || raw.model_name || '';
+    if (!id) return null;
+    let imgs = raw.supportsImages;
+    if (imgs == null) imgs = raw.supportImage;
+    if (imgs == null && Array.isArray(raw.tags)) {
+      imgs = raw.tags.some((t) => /image|vision/i.test(String(t)));
+    }
+    let reason = raw.supportsReasoning;
+    if (reason == null) reason = raw.supports_reasoning;
+    if (reason == null && Array.isArray(raw.tags)) {
+      reason = raw.tags.some((t) => /reason|think/i.test(String(t)));
+    }
+    const ctx = raw.contextLength || raw.context_window || (raw.params && raw.params.context_window) || 0;
+    const label =
+      raw.displayName ||
+      raw.display_name ||
+      (raw.description ? String(raw.description).slice(0, 48) : '') ||
+      (raw.name && raw.name !== id ? raw.name : '') ||
+      id;
+    return {
+      id: String(id),
+      name: String(label),
+      contextLength: Number(ctx) || 0,
+      supportsImages: !!imgs,
+      supportsReasoning: !!reason,
+    };
   }
 
   async function loadCatalog() {
     try {
       const d = await api('/api/catalog');
       if (d.ok && Array.isArray(d.models)) {
-        state.models = d.models;
+        const seen = new Set();
+        const list = [];
+        d.models.forEach((raw) => {
+          const m = normalizeModel(raw);
+          if (!m || seen.has(m.id)) return;
+          seen.add(m.id);
+          list.push(m);
+        });
+        state.models = list;
+        if (!state.model || !state.models.some((m) => m.id === state.model)) {
+          state.model = state.models.length ? state.models[0].id : '';
+        }
         renderModelList();
+        paintModelBar();
+        paintMe();
       }
     } catch {}
+  }
+
+  function paintModelBar() {
+    const m = currentModel();
+    const v = $('model-name-val');
+    if (v) v.textContent = m ? shortModelName(m) : '默认模型';
+    const chip = $('effort-chip');
+    const lab = $('effort-label');
+    const ok = reasoningSupported();
+    if (chip) {
+      chip.classList.toggle('on', ok && state.effort !== 'off');
+      chip.disabled = !ok;
+      chip.setAttribute('aria-disabled', ok ? 'false' : 'true');
+    }
+    if (lab) lab.textContent = effortChipLabel();
+    if (chip) chip.setAttribute('aria-label', '深度思考：' + effortName().replace('深度思考 · ', ''));
+  }
+
+  function modelGroupOf(m) {
+    const id = String(m.id || '').toLowerCase();
+    if (m.supportsImages) return '支持识图';
+    if (m.supportsReasoning) return '支持推理';
+    if (/embed|rerank/.test(id)) return '其他';
+    return '通用对话';
   }
 
   function renderModelList() {
-    const list = $('model-list');
-    list.innerHTML = '';
+    const box = $('model-list');
+    if (!box) return;
+    box.innerHTML = '';
     if (!state.models.length) {
-      list.innerHTML = '<p class="panel-tip">暂无可用模型</p>';
+      box.innerHTML = '<p class="sheet-tip">暂无可用模型，请检查网络后重试。</p>';
       return;
     }
+    const groups = new Map();
     state.models.forEach((m) => {
-      const el = document.createElement('div');
-      el.className = 'model-item' + (m.id === state.model ? ' active' : '');
-      const meta = [m.id, m.contextLength ? m.contextLength + ' 上下文' : '', m.supportsImages ? '识图' : '']
-        .filter(Boolean)
-        .join(' · ');
-      el.innerHTML =
-        '<div class="mi-main"><div class="nm">' + esc(m.name) + '</div><div class="meta">' + esc(meta) + '</div></div>' +
-        '<span class="pick">' + (m.id === state.model ? '已选' : '选择') + '</span>';
-      el.onclick = () => {
-        state.model = m.id;
-        updateModelBar();
-        closeSheet('model-sheet');
-        renderModelList();
-      };
-      list.appendChild(el);
+      const g = modelGroupOf(m);
+      if (!groups.has(g)) groups.set(g, []);
+      groups.get(g).push(m);
     });
+    // 稳定顺序
+    const order = ['支持识图', '支持推理', '通用对话', '其他'];
+    [...groups.keys()]
+      .sort((a, b) => order.indexOf(a) - order.indexOf(b))
+      .forEach((g) => {
+        const title = el('div', 'model-group-title');
+        title.textContent = g;
+        box.appendChild(title);
+
+        groups.get(g).forEach((m) => {
+          const row = el('div', 'model-item' + (m.id === state.model ? ' active' : ''));
+          row.setAttribute('role', 'button');
+          row.tabIndex = 0;
+
+          const main = el('div', 'mi-main');
+          const nm = el('div', 'mi-name');
+          nm.appendChild(document.createTextNode(m.name || m.id));
+          if (m.supportsReasoning) nm.appendChild(ico('bolt'));
+          main.appendChild(nm);
+
+          const meta = el('div', 'mi-meta');
+          if (m.contextLength) {
+            const b = el('span', 'mi-badge');
+            b.textContent = fmtContext(m.contextLength);
+            meta.appendChild(b);
+          }
+          if (m.supportsImages) {
+            const b = el('span', 'mi-badge');
+            b.textContent = '识图';
+            meta.appendChild(b);
+          }
+          if (m.supportsReasoning) {
+            const b = el('span', 'mi-badge');
+            b.textContent = '推理';
+            meta.appendChild(b);
+          }
+          if (!meta.childNodes.length) {
+            const b = el('span', 'mi-badge');
+            b.textContent = '对话';
+            meta.appendChild(b);
+          }
+          main.appendChild(meta);
+          row.appendChild(main);
+
+          if (m.id === state.model) {
+            const c = el('span', 'mi-check');
+            c.appendChild(ico('check'));
+            row.appendChild(c);
+          }
+
+          const pick = () => {
+            state.model = m.id;
+            savePrefs();
+            paintModelBar();
+            paintMe();
+            renderModelList();
+            closeSheet('model-sheet');
+            haptic();
+          };
+          row.onclick = pick;
+          row.onkeydown = (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              pick();
+            }
+          };
+          box.appendChild(row);
+        });
+      });
   }
 
-  function updateModelBar() {
-    const m = state.models.find((x) => x.id === state.model);
-    $('model-name-val').textContent = m ? m.name : state.model || '默认';
-    $('set-model').textContent = state.model || '—';
-    $('set-think').textContent = state.thinking ? '开' : '关';
+  function fmtContext(n) {
+    const v = Number(n);
+    if (!v) return '';
+    if (v >= 1000000) return Math.round(v / 100000) / 10 + 'M';
+    if (v >= 1000) return Math.round(v / 1000) + 'K';
+    return String(v);
   }
 
-  // ---------- 消息渲染 ----------
-  function el(tag, cls) {
-    const e = document.createElement(tag);
-    if (cls) e.className = cls;
-    return e;
-  }
-
-  // 一条消息只建一次 DOM，流式时只改文本节点
-  function createRow(m) {
-    const row = el('div', 'msg-row ' + (m.role === 'user' ? 'user' : 'ai'));
-    const bubble = el('div', 'bubble');
-
-    let reasoningBox = null;
-    let reasoningPre = null;
-    if (m.role !== 'user') {
-      reasoningBox = el('details', 'reasoning');
-      const sum = el('summary');
-      sum.textContent = '深度思考过程';
-      reasoningPre = el('pre');
-      reasoningBox.appendChild(sum);
-      reasoningBox.appendChild(reasoningPre);
-      bubble.appendChild(reasoningBox);
-    }
-
-    const typing = el('div', 'typing');
-    typing.innerHTML = '<span></span><span></span><span></span>';
-    if (m.role !== 'user') bubble.appendChild(typing);
-
-    const content = el('div', 'content');
-    bubble.appendChild(content);
-
-    // 回答下方的轻量操作条（复制 / 重试）
-    let actions = null;
-    if (m.role !== 'user') {
-      actions = el('div', 'msg-actions');
-      const bCopy = el('button', 'act');
-      bCopy.type = 'button';
-      bCopy.textContent = '复制';
-      bCopy.onclick = () => copyText(m.content, '已复制');
-      const bRetry = el('button', 'act');
-      bRetry.type = 'button';
-      bRetry.textContent = '重试';
-      bRetry.onclick = () => retryFrom(m);
-      actions.appendChild(bCopy);
-      actions.appendChild(bRetry);
-      bubble.appendChild(actions);
-    }
-
-    row.appendChild(bubble);
-
-    const render = () => {
-      if (m.role !== 'user') {
-        const hasR = !!(m.reasoning && m.reasoning.length);
-        reasoningBox.hidden = !hasR;
-        if (hasR && reasoningPre.textContent !== m.reasoning) reasoningPre.textContent = m.reasoning;
-      }
-      const text = m.content || '';
-      if (m.role === 'user') {
-        if (content.textContent !== text) content.textContent = text;
-      } else if (m._html !== text) {
-        // 模型输出按 Markdown 渲染；流式时约 90ms 重排一次，避免每个 token 都全量重解析
-        const now = Date.now();
-        if (!m.streaming || !m._mdAt || now - m._mdAt > 90) {
-          m._html = text;
-          m._mdAt = now;
-          content.innerHTML = window.MD.render(text);
-        }
-      }
-      if (actions) actions.classList.toggle('hidden', !!m.streaming);
-      content.classList.toggle('cursor', !!m.streaming);
-      if (m.role !== 'user') {
-        typing.classList.toggle('hidden', !(m.streaming && !m.content && !m.reasoning));
-      }
-    };
-
-    m.ui = { el: row, render };
-    render();
-    return row;
-  }
-
-  function isNearBottom() {
-    const box = $('messages');
-    return box.scrollHeight - box.scrollTop - box.clientHeight < 140;
-  }
-  function scrollBottom(force) {
-    const box = $('messages');
-    if (force || isNearBottom()) box.scrollTop = box.scrollHeight;
-  }
-
-  function buildEmpty() {
-    const wrap = el('div', 'empty-state');
-    wrap.innerHTML =
-      '<div class="empty-mark">' +
-      '<svg viewBox="0 0 48 48" fill="none" aria-hidden="true">' +
-      '<defs>' +
-      '<linearGradient id="em-face" x1="24" y1="12" x2="24" y2="41" gradientUnits="userSpaceOnUse">' +
-      '<stop stop-color="#2e3a4f"/><stop offset="1" stop-color="#161d29"/></linearGradient>' +
-      '<linearGradient id="em-ring" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">' +
-      '<stop stop-color="#f59e0b" stop-opacity=".5"/><stop offset="1" stop-color="#f59e0b" stop-opacity="0"/></linearGradient>' +
-      '</defs>' +
-      '<circle cx="24" cy="24" r="21" stroke="url(#em-ring)" stroke-width="1.2"/>' +
-      '<circle cx="11.5" cy="15" r="6.2" fill="#243044"/><circle cx="36.5" cy="15" r="6.2" fill="#243044"/>' +
-      '<circle cx="11.5" cy="15" r="3" fill="#f59e0b" opacity=".42"/><circle cx="36.5" cy="15" r="3" fill="#f59e0b" opacity=".42"/>' +
-      '<ellipse cx="24" cy="26" rx="15.6" ry="14.2" fill="url(#em-face)" stroke="#3a4a63" stroke-width="1"/>' +
-      '<path d="M9.8 23.4c0-3.6 3.3-6.1 7.4-6.1 3.8 0 6.3 2.5 6.3 5.9 0 3.5-2.9 6.2-6.7 6.2-4.1 0-7-2.4-7-6z" fill="#080c13"/>' +
-      '<path d="M38.2 23.4c0-3.6-3.3-6.1-7.4-6.1-3.8 0-6.3 2.5-6.3 5.9 0 3.5 2.9 6.2 6.7 6.2 4.1 0 7-2.4 7-6z" fill="#080c13"/>' +
-      '<circle cx="17.1" cy="23.8" r="2.15" fill="#fff"/><circle cx="30.9" cy="23.8" r="2.15" fill="#fff"/>' +
-      '<circle cx="17.5" cy="24.2" r="1.15" fill="#0b0f17"/><circle cx="31.3" cy="24.2" r="1.15" fill="#0b0f17"/>' +
-      '<path d="M24 29.6l-2.3 2.1h4.6L24 29.6z" fill="#f59e0b"/>' +
-      '<path d="M20.8 34.2c1.1 1.5 5.3 1.5 6.4 0" stroke="#7b8aa1" stroke-width="1.3" stroke-linecap="round"/>' +
-      '</svg></div>' +
-      '<h2>开始对话</h2><p class="empty-sub">选择模型、开启深度思考，直接提问</p><div class="suggest"></div>';
-
-    const suggest = wrap.querySelector('.suggest');
-    SUGGEST.forEach((s) => {
-      const chip = el('button', 'suggest-chip');
-      chip.type = 'button';
-      chip.innerHTML =
-        '<span class="chip-ico">' + s.icon + '</span>' +
-        '<span class="chip-tx"><b>' + esc(s.title) + '</b><em>' + esc(s.text) + '</em></span>';
-      chip.onclick = () => {
-        $('input').value = s.text;
-        autoGrow();
-        updateSend();
-        $('input').focus();
-      };
-      suggest.appendChild(chip);
-    });
-    return wrap;
-  }
-
-  function rebuildEmpty() {
-    const box = $('messages');
-    box.innerHTML = '';
-    if (!state.messages.length) {
-      box.appendChild(buildEmpty());
-    } else {
-      state.messages.forEach((m) => box.appendChild(m.ui ? m.ui.el : createRow(m)));
-    }
-    scrollBottom(true);
-  }
-
-  function appendMessage(role, content) {
-    const m = { role, content, reasoning: '', streaming: role === 'ai' };
-    state.messages.push(m);
-    const box = $('messages');
-    const empty = box.querySelector('.empty-state');
-    if (empty) empty.remove();
-    box.appendChild(createRow(m));
-    scrollBottom(true);
-    return m;
-  }
-
-  // ---------- 系统提示词 / 导出 ----------
-  function paintSystem() {
-    const box = $('set-system');
-    if (!box) return;
-    const v = state.system || '';
-    box.textContent = v ? (v.length > 10 ? v.slice(0, 10) + '…' : v) : '未设置';
-  }
-
-  function editSystem() {
-    const input = window.prompt('系统提示词（只对当前对话生效，留空=不设置）', state.system || '');
-    if (input === null) return;
-    state.system = input.trim();
-    syncCurrent();
-    paintSystem();
-    toast(state.system ? '已设置系统提示词' : '已清除系统提示词');
-  }
-
-  function exportCurrent() {
-    if (!state.messages.length) return toast('当前对话是空的');
-    const cur = state.chats.find((c) => c.id === state.chatId);
-    let md = '# ' + ((cur && cur.title) || '对话') + '\n\n';
-    state.messages.forEach((m) => {
-      md += (m.role === 'user' ? '**我**' : '**小浣熊**') + '\n\n' + (m.content || '') + '\n\n';
-    });
-    copyText(md, '已复制为 Markdown');
-  }
-
-  // ---------- 复制 / 重试 ----------
-  function copyText(text, tip) {
-    const s = String(text || '');
-    if (!s) return;
-    const done = () => toast(tip || '已复制');
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(s).then(done).catch(() => fallbackCopy(s, done));
-    } else {
-      fallbackCopy(s, done);
-    }
-  }
-
-  function fallbackCopy(s, done) {
-    const ta = document.createElement('textarea');
-    ta.value = s;
-    ta.style.position = 'fixed';
-    ta.style.top = '-1000px';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    try {
-      document.execCommand('copy');
-      done();
-    } catch {
-      toast('复制失败');
-    }
-    ta.remove();
-  }
-
-  // 从这条回答重新生成：砍掉它和它之后的消息，用上一条提问重发
-  function retryFrom(m) {
-    if (state.streaming) return;
-    const idx = state.messages.indexOf(m);
-    if (idx < 0) return;
-    let ui = -1;
-    for (let i = idx - 1; i >= 0; i--) {
-      if (state.messages[i].role === 'user') {
-        ui = i;
-        break;
-      }
-    }
-    if (ui < 0) return;
-    const text = state.messages[ui].content;
-    state.messages = state.messages.slice(0, ui);
-    rebuildEmpty();
-    syncCurrent();
-    $('input').value = text;
-    autoGrow();
-    updateSend();
-    send();
-  }
-
-  // ---------- 多会话 ----------
-  const CHATS_KEY = 'raccoon.chats.v1';
-  const ACTIVE_KEY = 'raccoon.chat.active';
-
-  function loadChats() {
-    let list = [];
-    try {
-      list = JSON.parse(localStorage.getItem(CHATS_KEY) || '[]') || [];
-    } catch {
-      list = [];
-    }
-    if (!Array.isArray(list)) list = [];
-    state.chats = list.filter((c) => c && c.id);
-    let active = '';
-    try {
-      active = localStorage.getItem(ACTIVE_KEY) || '';
-    } catch {}
-    if (!state.chats.some((c) => c.id === active)) active = state.chats[0] ? state.chats[0].id : '';
-    if (!active) {
-      active = window.RaccoonDirect.newSessionId();
-      state.chats.unshift({ id: active, title: '新对话', messages: [], updatedAt: Date.now() });
-    }
-    state.chatId = active;
-    state.sessionId = active;
-    const cur = state.chats.find((c) => c.id === active);
-    state.messages = ((cur && cur.messages) || []).map((m) => ({ ...m, streaming: false }));
-    state.system = (cur && cur.system) || '';
-    saveChats();
-  }
-
-  function saveChats() {
-    try {
-      localStorage.setItem(CHATS_KEY, JSON.stringify(state.chats.slice(0, 60)));
-      localStorage.setItem(ACTIVE_KEY, state.chatId || '');
-    } catch {}
-  }
-
-  function syncCurrent() {
-    const cur = state.chats.find((c) => c.id === state.chatId);
-    if (!cur) return;
-    cur.messages = state.messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-      reasoning: m.reasoning || '',
-    }));
-    cur.system = state.system || '';
-    const first = cur.messages.find((m) => m.role === 'user');
-    if (first && first.content) {
-      cur.title = String(first.content).replace(/\s+/g, ' ').trim().slice(0, 24);
-    }
-    cur.updatedAt = Date.now();
-    saveChats();
-  }
-
-  function newChat() {
-    if (state.streaming) stopStreaming();
-    syncCurrent();
-    const id = window.RaccoonDirect.newSessionId();
-    state.chats.unshift({ id, title: '新对话', messages: [], updatedAt: Date.now() });
-    state.chatId = id;
-    state.sessionId = id;
-    state.messages = [];
-    state.system = '';
-    saveChats();
-    showView('chat');
-    rebuildEmpty();
-    setTimeout(() => $('input').focus(), 50);
-  }
-
-  function switchChat(id) {
-    if (id === state.chatId) return;
-    if (state.streaming) stopStreaming();
-    syncCurrent();
-    const cur = state.chats.find((c) => c.id === id);
-    if (!cur) return;
-    state.chatId = id;
-    state.sessionId = id;
-    state.messages = (cur.messages || []).map((m) => ({ ...m, streaming: false }));
-    state.system = cur.system || '';
-    saveChats();
-    rebuildEmpty();
-  }
-
-  function deleteChat(id) {
-    if (state.streaming && id === state.chatId) stopStreaming();
-    state.chats = state.chats.filter((c) => c.id !== id);
-    if (!state.chats.length) {
-      newChat();
-      renderChatList();
-      return;
-    }
-    if (state.chatId === id) {
-      state.chatId = state.chats[0].id;
-      state.sessionId = state.chatId;
-      state.messages = (state.chats[0].messages || []).map((m) => ({ ...m, streaming: false }));
-      rebuildEmpty();
-    }
-    saveChats();
-    renderChatList();
-  }
-
-  function fmtTime(ts) {
-    if (!ts) return '';
-    const d = new Date(ts);
-    const now = new Date();
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mm = String(d.getMinutes()).padStart(2, '0');
-    if (d.toDateString() === now.toDateString()) return hh + ':' + mm;
-    return d.getMonth() + 1 + '/' + d.getDate() + ' ' + hh + ':' + mm;
-  }
-
-  function renderChatList() {
-    const box = $('chat-list');
+  function renderEffortList() {
+    const box = $('effort-list');
     if (!box) return;
     box.innerHTML = '';
-    if (!state.chats.length) {
-      box.innerHTML = '<p class="panel-tip">还没有对话</p>';
+
+    if (!reasoningSupported()) {
+      box.innerHTML = '<p class="sheet-tip">当前模型不提供推理强度设置。换一个带「推理」标记的模型即可开启深度思考。</p>';
       return;
     }
-    state.chats.forEach((c) => {
-      const row = el('div', 'chat-item' + (c.id === state.chatId ? ' active' : ''));
-      const main = el('div', 'ci-main');
-      const t = el('div', 'ci-title');
-      t.textContent = c.title || '新对话';
-      const meta = el('div', 'ci-meta');
-      meta.textContent = (c.messages ? c.messages.length : 0) + ' 条 · ' + fmtTime(c.updatedAt);
-      main.appendChild(t);
-      main.appendChild(meta);
-      const del = el('button', 'ci-del');
-      del.type = 'button';
-      del.textContent = '删除';
-      del.onclick = (e) => {
-        e.stopPropagation();
-        deleteChat(c.id);
-      };
+
+    EFFORTS.forEach((e) => {
+      const row = el('div', 'effort-item' + (e.id === state.effort ? ' active' : ''));
+      row.setAttribute('role', 'button');
+      row.tabIndex = 0;
+      const main = el('div', 'effort-main');
+      const nm = el('div', 'effort-name');
+      nm.textContent = e.name;
+      const ds = el('div', 'effort-desc');
+      ds.textContent = e.desc;
+      main.appendChild(nm);
+      main.appendChild(ds);
       row.appendChild(main);
-      row.appendChild(del);
-      row.onclick = () => {
-        switchChat(c.id);
-        closeSheet('chat-sheet');
+      if (e.id === state.effort) {
+        const c = el('span', 'mi-check');
+        c.appendChild(ico('check'));
+        row.appendChild(c);
+      }
+      const pick = () => {
+        state.effort = e.id;
+        savePrefs();
+        paintModelBar();
+        paintMe();
+        renderEffortList();
+        closeSheet('effort-sheet');
+        haptic();
+      };
+      row.onclick = pick;
+      row.onkeydown = (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          pick();
+        }
       };
       box.appendChild(row);
     });
   }
 
-  // ---------- 发送 ----------
-  let renderPending = false;
+  // ============================================================
+  // 附件
+  // ============================================================
+  const MAX_IMAGE_EDGE = 1400;
+  const MAX_TEXT_BYTES = 200 * 1024;
+  const MAX_IMAGES = 6;
+
+  function readFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result || ''));
+      fr.onerror = () => reject(new Error('读取失败'));
+      fr.readAsDataURL(file);
+    });
+  }
+
+  function readFileAsText(file) {
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result || ''));
+      fr.onerror = () => reject(new Error('读取失败'));
+      fr.readAsText(file);
+    });
+  }
+
+  // 压缩到合理尺寸，避免 base64 撑爆请求
+  async function compressImage(file) {
+    const dataUrl = await readFileAsDataURL(file);
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error('图片解码失败'));
+      i.src = dataUrl;
+    });
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(w, h));
+    const tw = Math.max(1, Math.round(w * scale));
+    const th = Math.max(1, Math.round(h * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = tw;
+    canvas.height = th;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, tw, th);
+    let out = dataUrl;
+    try {
+      out = canvas.toDataURL('image/jpeg', 0.86);
+    } catch {
+      out = dataUrl;
+    }
+    return { dataUrl: out, w: tw, h: th };
+  }
+
+  async function addImageFiles(files) {
+    const list = Array.from(files || []).filter((f) => /^image\//.test(f.type));
+    if (!list.length) return;
+
+    if (!visionSupported()) {
+      toast('当前模型不支持识图，请先切换到支持识图的模型');
+      return;
+    }
+    const room = MAX_IMAGES - state.attachments.filter((a) => a.type === 'image').length;
+    if (room <= 0) {
+      toast('一次最多 ' + MAX_IMAGES + ' 张图片');
+      return;
+    }
+
+    for (const f of list.slice(0, room)) {
+      try {
+        const c = await compressImage(f);
+        state.attachments.push({ type: 'image', name: f.name || '图片', dataUrl: c.dataUrl, w: c.w, h: c.h });
+      } catch {
+        toast('有一张图片读取失败');
+      }
+    }
+    paintAttachments();
+    updateSendState();
+  }
+
+  async function addDocFiles(files) {
+    const list = Array.from(files || []);
+    if (!list.length) return;
+    for (const f of list) {
+      if (f.size > MAX_TEXT_BYTES) {
+        toast(f.name + ' 超过 200KB，请换更小的文件');
+        continue;
+      }
+      try {
+        const text = await readFileAsText(f);
+        state.attachments.push({ type: 'text', name: f.name || '文本', text });
+      } catch {
+        toast(f.name + ' 读取失败');
+      }
+    }
+    paintAttachments();
+    updateSendState();
+  }
+
+  function removeAttachment(idx) {
+    state.attachments.splice(idx, 1);
+    paintAttachments();
+    updateSendState();
+  }
+
+  function paintAttachments() {
+    const tray = $('attachment-tray');
+    if (!tray) return;
+    tray.innerHTML = '';
+    if (!state.attachments.length) {
+      tray.classList.add('hidden');
+      return;
+    }
+    tray.classList.remove('hidden');
+    state.attachments.forEach((a, i) => {
+      const chip = el('div', 'attach-chip');
+      if (a.type === 'image') {
+        const img = el('img');
+        img.src = a.dataUrl;
+        img.alt = a.name;
+        chip.appendChild(img);
+      } else {
+        const box = el('div', 'file-ico');
+        box.appendChild(ico('file'));
+        chip.appendChild(box);
+      }
+      const nm = el('div', 'name');
+      nm.textContent = a.type === 'text' ? a.name : '图片';
+      chip.appendChild(nm);
+
+      const rm = el('button', 'rm');
+      rm.type = 'button';
+      rm.setAttribute('aria-label', '移除 ' + a.name);
+      rm.appendChild(ico('close'));
+      rm.onclick = () => removeAttachment(i);
+      chip.appendChild(rm);
+      tray.appendChild(chip);
+    });
+  }
+
+  // ============================================================
+  // 消息渲染
+  // ============================================================
+  function scrollBox() {
+    return $('messages');
+  }
+  function isNearBottom(slack) {
+    const box = scrollBox();
+    if (!box) return true;
+    return box.scrollHeight - box.scrollTop - box.clientHeight < (slack || 160);
+  }
+  function scrollBottom(force) {
+    const box = scrollBox();
+    if (!box) return;
+    if (force || isNearBottom()) box.scrollTop = box.scrollHeight;
+    updateScrollButton();
+  }
+  function updateScrollButton() {
+    const btn = $('btn-scroll-bottom');
+    if (!btn) return;
+    btn.classList.toggle('hidden', isNearBottom(120));
+  }
+
+  function buildEmpty() {
+    const wrap = el('div', 'empty');
+    wrap.innerHTML =
+      '<div class="empty-mark">' +
+      '<svg viewBox="0 0 48 48" fill="none">' +
+      '<ellipse cx="24" cy="26.5" rx="15.4" ry="14" fill="#151515" stroke="#2a2a2a" stroke-width="1"/>' +
+      '<circle cx="11.6" cy="15.2" r="6" fill="#1b1b1b" stroke="#2a2a2a" stroke-width="1"/>' +
+      '<circle cx="36.4" cy="15.2" r="6" fill="#1b1b1b" stroke="#2a2a2a" stroke-width="1"/>' +
+      '<path d="M9.8 23.6c0-3.6 3.3-6.1 7.4-6.1 3.8 0 6.3 2.5 6.3 5.9 0 3.5-2.9 6.2-6.7 6.2-4.1 0-7-2.4-7-6z" fill="#000"/>' +
+      '<path d="M38.2 23.6c0-3.6-3.3-6.1-7.4-6.1-3.8 0-6.3 2.5-6.3 5.9 0 3.5 2.9 6.2 6.7 6.2 4.1 0 7-2.4 7-6z" fill="#000"/>' +
+      '<circle cx="17.2" cy="24" r="2.1" fill="#f59e0b"/>' +
+      '<circle cx="30.8" cy="24" r="2.1" fill="#f59e0b"/>' +
+      '<path d="M24 29.8l-2.2 2h4.4z" fill="#f59e0b"/>' +
+      '</svg></div>' +
+      '<h2>开始对话</h2>' +
+      '<p>提问、拍照、或丢一段文本进来</p>' +
+      '<div class="suggest"></div>';
+
+    const box = wrap.querySelector('.suggest');
+    SUGGESTIONS.forEach((s) => {
+      const item = el('button', 'suggest-item');
+      item.type = 'button';
+      item.appendChild(ico(s.icon));
+      item.appendChild(document.createTextNode(s.title));
+      const em = el('em');
+      em.textContent = '填入';
+      item.appendChild(em);
+      item.onclick = () => {
+        const ta = $('input');
+        ta.value = s.text;
+        autoGrow();
+        updateSendState();
+        ta.focus();
+        // 光标放末尾
+        try {
+          ta.setSelectionRange(ta.value.length, ta.value.length);
+        } catch {}
+      };
+      box.appendChild(item);
+    });
+    return wrap;
+  }
+
+  // 为一条消息建立 DOM（只建一次）
+  function createRow(m) {
+    const row = el('div', 'msg ' + (m.role === 'user' ? 'msg-user' : 'msg-ai'));
+
+    if (m.role === 'user') {
+      if (m.attachments && m.attachments.length) {
+        const wrap = el('div', 'msg-attachments');
+        m.attachments.forEach((a) => {
+          if (a.type === 'image') {
+            const img = el('img');
+            img.src = a.dataUrl;
+            img.alt = a.name || '图片';
+            wrap.appendChild(img);
+          }
+        });
+        if (wrap.childNodes.length) row.appendChild(wrap);
+      }
+      const bubble = el('div', 'bubble bubble-text');
+      bubble.textContent = m.content || '';
+      row.appendChild(bubble);
+      m.ui = {
+        el: row,
+        render() {
+          if (bubble.textContent !== (m.content || '')) bubble.textContent = m.content || '';
+        },
+      };
+      return row;
+    }
+
+    // 助手
+    const answer = el('div', 'answer');
+
+    const reasoning = el('details', 'reasoning');
+    reasoning.hidden = true;
+    const sum = el('summary');
+    sum.appendChild(ico('bolt'));
+    const sumText = el('span');
+    sumText.textContent = '思考过程';
+    sum.appendChild(sumText);
+    const rBody = el('div', 'reasoning-body');
+    reasoning.appendChild(sum);
+    reasoning.appendChild(rBody);
+    answer.appendChild(reasoning);
+
+    const pending = el('div', 'pending');
+    pending.innerHTML = '<i></i><i></i><i></i>';
+    answer.appendChild(pending);
+
+    const body = el('div', 'answer-body md');
+    answer.appendChild(body);
+
+    const errBox = el('div', 'inline-error');
+    errBox.hidden = true;
+    answer.appendChild(errBox);
+
+    row.appendChild(answer);
+
+    const actions = el('div', 'msg-actions');
+    const bCopy = el('button');
+    bCopy.type = 'button';
+    bCopy.appendChild(ico('copy'));
+    bCopy.appendChild(document.createTextNode('复制'));
+    bCopy.onclick = () => copyText(m.content, '已复制');
+    actions.appendChild(bCopy);
+
+    const bRetry = el('button');
+    bRetry.type = 'button';
+    bRetry.appendChild(ico('refresh'));
+    bRetry.appendChild(document.createTextNode('重试'));
+    bRetry.onclick = () => retryFrom(m);
+    actions.appendChild(bRetry);
+
+    const meta = el('span', 'msg-meta');
+    actions.appendChild(meta);
+    row.appendChild(actions);
+
+    let mdAt = 0;
+    let mdLen = -1;
+
+    const render = (final) => {
+      const hasR = !!(m.reasoning && m.reasoning.length);
+      reasoning.hidden = !hasR;
+      if (hasR) {
+        if (rBody.textContent !== m.reasoning) rBody.textContent = m.reasoning;
+        if (m.streaming && !m._openedReasoning) {
+          m._openedReasoning = true;
+          reasoning.open = true;
+        }
+        if (!m.streaming && m._openedReasoning) {
+          reasoning.open = false;
+          m._openedReasoning = false;
+        }
+      }
+
+      const text = m.content || '';
+      const now = Date.now();
+      const grown = text.length - mdLen;
+      // 流式时控频：有实质增长或到时间才重解析 Markdown
+      if (final || mdLen < 0 || (grown >= 24 && now - mdAt >= 110) || (grown > 0 && now - mdAt >= 240)) {
+        mdAt = now;
+        mdLen = text.length;
+        body.innerHTML = text ? window.MD.render(text) : '';
+        body.classList.toggle('cursor', !!m.streaming && !!text);
+      } else if (!text) {
+        body.innerHTML = '';
+        body.classList.remove('cursor');
+      }
+
+      pending.classList.toggle('hidden', !(m.streaming && !text));
+      pending.style.display = m.streaming && !text ? 'flex' : 'none';
+
+      if (m.error) {
+        errBox.hidden = false;
+        errBox.textContent = m.error;
+      } else {
+        errBox.hidden = true;
+      }
+
+      row.classList.toggle('streaming', !!m.streaming);
+      actions.classList.toggle('hidden', !!m.streaming || (!text && !m.error));
+
+      if (m.usage && (m.usage.prompt_tokens || m.usage.completion_tokens)) {
+        const total = m.usage.total_tokens || (m.usage.prompt_tokens || 0) + (m.usage.completion_tokens || 0);
+        meta.textContent = total ? total + ' tokens' : '';
+      } else {
+        meta.textContent = '';
+      }
+    };
+
+    m.ui = { el: row, render };
+    render(true);
+    return row;
+  }
+
+  let rafPending = null;
   function scheduleRender(m) {
-    if (renderPending) return;
-    renderPending = true;
-    requestAnimationFrame(() => {
-      renderPending = false;
-      if (m.ui) m.ui.render();
+    if (rafPending) return;
+    rafPending = requestAnimationFrame(() => {
+      rafPending = null;
+      if (m && m.ui) m.ui.render(false);
       scrollBottom(false);
     });
   }
 
-  function updateSend() {
-    const btn = $('btn-send');
-    const streaming = state.streaming;
-    btn.classList.toggle('streaming', streaming);
-    btn.querySelector('.ico-send').classList.toggle('hidden', streaming);
-    btn.querySelector('.ico-stop').classList.toggle('hidden', !streaming);
-    btn.disabled = streaming ? false : !$('input').value.trim();
-    btn.setAttribute('aria-label', streaming ? '停止生成' : '发送');
+  function clearThread() {
+    const box = scrollBox();
+    if (box) box.innerHTML = '';
   }
 
+  function rebuildThread() {
+    const box = scrollBox();
+    if (!box) return;
+    box.innerHTML = '';
+    if (!state.messages.length) {
+      box.appendChild(buildEmpty());
+      updateScrollButton();
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    state.messages.forEach((m) => {
+      m.ui = null;
+      frag.appendChild(createRow(m));
+    });
+    box.appendChild(frag);
+    scrollBottom(true);
+  }
+
+  function appendRow(m) {
+    const box = scrollBox();
+    if (!box) return;
+    const empty = box.querySelector('.empty');
+    if (empty) empty.remove();
+    box.appendChild(m.ui ? m.ui.el : createRow(m));
+  }
+
+  // ============================================================
+  // 消息 → API 载荷
+  // ============================================================
+  function composeUserPayload(m) {
+    const imgs = (m.attachments || []).filter((a) => a.type === 'image');
+    let text = m.content || '';
+    const docs = (m.attachments || []).filter((a) => a.type === 'text');
+    if (docs.length) {
+      const parts = docs.map((d) => '【文件：' + d.name + '】\n' + String(d.text || '').slice(0, 40000));
+      text = (text ? text + '\n\n' : '') + parts.join('\n\n');
+    }
+    if (!imgs.length) return { role: 'user', content: text };
+    const blocks = [{ type: 'text', text: text || '请看下面的图片' }];
+    imgs.forEach((a) => blocks.push({ type: 'image_url', image_url: { url: a.dataUrl } }));
+    return { role: 'user', content: blocks };
+  }
+
+  function buildApiMessages() {
+    const out = [];
+    if (state.system && state.system.trim()) out.push({ role: 'system', content: state.system.trim() });
+    state.messages.forEach((m) => {
+      if (!m.content && !(m.attachments && m.attachments.length)) return;
+      if (m.role === 'user') out.push(composeUserPayload(m));
+      else if (m.content) out.push({ role: 'assistant', content: m.content });
+    });
+    return out;
+  }
+
+  // ============================================================
+  // 发送与流式
+  // ============================================================
   function stopStreaming() {
     if (state.abort) {
       try {
@@ -945,7 +1301,6 @@
     }
   }
 
-  // 代理模式下的流式对话（备用通道）
   async function streamViaProxy(body, ai) {
     const base = proxyBase();
     const res = await fetch(base + '/api/chat', {
@@ -978,13 +1333,11 @@
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
       buffer = lines.pop() || '';
-
       for (const line of lines) {
         const t = line.trim();
         if (!t || t.indexOf('data:') !== 0) continue;
         const payload = t.slice(5).trim();
         if (!payload || payload === '[DONE]') continue;
-
         let frame;
         try {
           frame = JSON.parse(payload);
@@ -992,9 +1345,10 @@
           continue;
         }
         if (frame.error) {
-          ai.content += (ai.content ? '\n\n' : '') + '⚠️ ' + (frame.error.message || '上游返回错误');
+          ai.error = frame.error.message || '上游返回错误';
           continue;
         }
+        if (frame.usage) ai.usage = frame.usage;
         const choice = frame.choices && frame.choices[0];
         if (!choice) continue;
         const delta = choice.delta || choice.message || {};
@@ -1006,34 +1360,65 @@
     }
   }
 
+  function updateSendState() {
+    const btn = $('btn-send');
+    if (!btn) return;
+    const streaming = state.streaming;
+    const ta = $('input');
+    const hasText = !!(ta && ta.value.trim());
+    const hasAttach = state.attachments.length > 0;
+    btn.classList.toggle('streaming', streaming);
+    btn.querySelector('.ico-send').classList.toggle('hidden', streaming);
+    btn.querySelector('.ico-stop').classList.toggle('hidden', !streaming);
+    btn.disabled = streaming ? false : !(hasText || hasAttach);
+    btn.setAttribute('aria-label', streaming ? '停止生成' : '发送');
+  }
+
   async function send() {
     if (state.streaming) return;
-    const input = $('input');
-    const text = input.value.trim();
-    if (!text) return;
+    const ta = $('input');
+    const text = ta.value.trim();
+    const attachments = state.attachments.slice();
+    if (!text && !attachments.length) return;
 
-    state.messages.push({ role: 'user', content: text });
-    input.value = '';
+    if (!state.model) {
+      toast('还没有可用模型，请稍后重试');
+      return;
+    }
+
+    const userMsg = { role: 'user', content: text, attachments };
+    state.messages.push(userMsg);
+    ta.value = '';
+    state.attachments = [];
+    paintAttachments();
     autoGrow();
-    rebuildEmpty();
+    rebuildThread();
+    updateSendState();
 
-    let ctx = state.messages
-      .filter((m) => !m.streaming)
-      .map((m) => ({ role: m.role === 'ai' ? 'assistant' : m.role, content: m.content }));
-    if (state.system) ctx = [{ role: 'system', content: state.system }].concat(ctx);
+    const ai = {
+      role: 'ai',
+      content: '',
+      reasoning: '',
+      streaming: true,
+      error: '',
+      usage: null,
+      attachments: [],
+    };
+    state.messages.push(ai);
+    appendRow(ai);
+
+    state.streaming = true;
+    state.abort = new AbortController();
+    updateSendState();
+    scrollBottom(true);
 
     const body = {
       model: state.model,
-      messages: ctx,
+      messages: buildApiMessages(),
       stream: true,
       max_tokens: 80000,
-      reasoning_effort: state.thinking ? 'high' : 'off',
+      reasoning_effort: reasoningSupported() ? state.effort : 'off',
     };
-
-    const ai = appendMessage('ai', '');
-    state.streaming = true;
-    state.abort = new AbortController();
-    updateSend();
 
     let aborted = false;
 
@@ -1043,12 +1428,15 @@
           { ...body, sessionId: state.sessionId, signal: state.abort.signal },
           {
             onDelta: (d) => {
-              if (d.error) ai.content += (ai.content ? '\n\n' : '') + '⚠️ ' + d.error;
+              if (d.error) ai.error = (ai.error ? ai.error + ' ' : '') + d.error;
               else {
                 if (d.content) ai.content += d.content;
                 if (d.reasoning) ai.reasoning += d.reasoning;
               }
               scheduleRender(ai);
+            },
+            onUsage: (u) => {
+              if (u) ai.usage = u;
             },
           }
         );
@@ -1062,36 +1450,572 @@
       } else {
         let msg = (e && e.message) || '请求失败';
         if (/Failed to fetch|Load failed|NetworkError/i.test(msg)) {
-          msg = isDirect() ? '连不上官方服务，请检查网络' : '连不上代理 ' + proxyBase() + '，请重新检测';
+          msg = isDirect() ? '连不上官方服务，请检查网络' : '连不上代理 ' + proxyBase();
         }
         if (e && e.auth === false) msg = '登录已失效，请重新登录';
-        ai.content += (ai.content ? '\n\n' : '') + '⚠️ ' + msg;
+        ai.error = msg;
+        if (!ai.content) ai.content = '';
       }
     } finally {
       ai.streaming = false;
       state.streaming = false;
       state.abort = null;
-      if (ai.ui) ai.ui.render();
+      if (ai.ui) ai.ui.render(true);
       scrollBottom(false);
-      updateSend();
+      updateSendState();
       syncCurrent();
       if (!aborted && (ai.content || ai.reasoning)) loadMe();
     }
   }
 
-  // ---------- 输入框 ----------
-  function autoGrow() {
+  function retryFrom(m) {
+    if (state.streaming) return;
+    const idx = state.messages.indexOf(m);
+    if (idx < 0) return;
+    let ui = -1;
+    for (let i = idx - 1; i >= 0; i--) {
+      if (state.messages[i].role === 'user') {
+        ui = i;
+        break;
+      }
+    }
+    if (ui < 0) return;
+    const prev = state.messages[ui];
+    const text = prev.content;
+    const attachments = prev.attachments || [];
+    state.messages = state.messages.slice(0, ui);
+    rebuildThread();
+    syncCurrent();
     const ta = $('input');
-    ta.style.height = 'auto';
-    ta.style.height = Math.min(ta.scrollHeight || 0, 120) + 'px';
+    ta.value = text || '';
+    state.attachments = attachments.slice();
+    paintAttachments();
+    autoGrow();
+    updateSendState();
+    send();
   }
 
-  // ---------- 语音 ----------
+  // ============================================================
+  // 复制 / 导出 / 分享
+  // ============================================================
+  function copyText(text, tip) {
+    const s = String(text || '');
+    if (!s) return;
+    const done = () => toast(tip || '已复制');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(s).then(done).catch(() => fallbackCopy(s, done));
+    } else {
+      fallbackCopy(s, done);
+    }
+  }
+
+  function fallbackCopy(s, done) {
+    const ta = document.createElement('textarea');
+    ta.value = s;
+    ta.style.position = 'fixed';
+    ta.style.top = '-1000px';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      done();
+    } catch {
+      toast('复制失败');
+    }
+    ta.remove();
+  }
+
+  function buildMarkdown() {
+    const cur = state.chats.find((c) => c.id === state.chatId);
+    let md = '# ' + ((cur && cur.title) || '对话') + '\n\n';
+    md += '_导出自小浣熊移动端 · ' + new Date().toLocaleString('zh-CN') + '_\n\n';
+    state.messages.forEach((m) => {
+      const who = m.role === 'user' ? '**我**' : '**小浣熊**';
+      let body = m.content || '';
+      const docs = (m.attachments || []).filter((a) => a.type === 'text');
+      if (docs.length) body += '\n\n' + docs.map((d) => '> 附件：' + d.name).join('\n');
+      const imgs = (m.attachments || []).filter((a) => a.type === 'image');
+      if (imgs.length) body += '\n\n' + imgs.map(() => '> [图片]').join('\n');
+      md += who + '\n\n' + body + '\n\n---\n\n';
+    });
+    return md;
+  }
+
+  function exportCurrent() {
+    if (!state.messages.length) return toast('当前对话是空的');
+    const md = buildMarkdown();
+    if (navigator.share) {
+      navigator
+        .share({ title: '小浣熊对话', text: md })
+        .then(() => toast('已分享'))
+        .catch(() => copyText(md, '已复制为 Markdown'));
+      return;
+    }
+    copyText(md, '已复制为 Markdown');
+  }
+
+  // ============================================================
+  // 多会话
+  // ============================================================
+  function newChatId() {
+    return window.RaccoonDirect.newSessionId();
+  }
+
+  function loadChats() {
+    let list = readJSON(CHATS_KEY, []);
+    if (!Array.isArray(list)) list = [];
+    state.chats = list
+      .filter((c) => c && c.id)
+      .map((c) => ({
+        id: c.id,
+        title: c.title || '新对话',
+        messages: Array.isArray(c.messages) ? c.messages : [],
+        system: c.system || '',
+        pinned: !!c.pinned,
+        updatedAt: c.updatedAt || 0,
+      }))
+      .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt);
+
+    let active = lsGet(ACTIVE_KEY, '');
+    if (!state.chats.some((c) => c.id === active)) {
+      active = state.chats[0] ? state.chats[0].id : '';
+    }
+    if (!active) {
+      active = newChatId();
+      state.chats.unshift({ id: active, title: '新对话', messages: [], system: '', pinned: false, updatedAt: Date.now() });
+    }
+    state.chatId = active;
+    state.sessionId = active;
+    hydrateCurrent();
+    saveChats();
+  }
+
+  function hydrateCurrent() {
+    const cur = state.chats.find((c) => c.id === state.chatId);
+    state.messages = ((cur && cur.messages) || []).map((m) => ({
+      role: m.role,
+      content: m.content || '',
+      reasoning: m.reasoning || '',
+      attachments: Array.isArray(m.attachments) ? m.attachments : [],
+      usage: m.usage || null,
+      error: '',
+      streaming: false,
+    }));
+    state.system = (cur && cur.system) || '';
+  }
+
+  function saveChats() {
+    const slim = state.chats.slice(0, 80).map((c) => ({
+      id: c.id,
+      title: c.title,
+      pinned: c.pinned,
+      updatedAt: c.updatedAt,
+      system: c.system || '',
+      messages: (c.messages || []).map((m) => ({
+        role: m.role,
+        content: m.content,
+        reasoning: m.reasoning || '',
+        // 图片 base64 太大，不落盘；文本附件保留
+        attachments: (m.attachments || []).filter((a) => a.type === 'text'),
+        usage: m.usage || null,
+      })),
+    }));
+    writeJSON(CHATS_KEY, slim);
+    lsSet(ACTIVE_KEY, state.chatId || '');
+  }
+
+  function syncCurrent() {
+    const cur = state.chats.find((c) => c.id === state.chatId);
+    if (!cur) return;
+    cur.messages = state.messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+      reasoning: m.reasoning || '',
+      attachments: (m.attachments || []).filter((a) => a.type === 'text'),
+      usage: m.usage || null,
+    }));
+    cur.system = state.system || '';
+    const first = cur.messages.find((m) => m.role === 'user');
+    if (first) {
+      const src = String(first.content || '').replace(/\s+/g, ' ').trim();
+      cur.title = src ? src.slice(0, 28) : '图片对话';
+    }
+    cur.updatedAt = Date.now();
+    saveChats();
+  }
+
+  function newChat() {
+    if (state.streaming) stopStreaming();
+    syncCurrent();
+    const id = newChatId();
+    state.chats.unshift({ id, title: '新对话', messages: [], system: '', pinned: false, updatedAt: Date.now() });
+    state.chatId = id;
+    state.sessionId = id;
+    state.messages = [];
+    state.system = '';
+    state.attachments = [];
+    paintAttachments();
+    saveChats();
+    rebuildThread();
+    setTab('chat');
+    paintMe();
+    updateSendState();
+    setTimeout(() => $('input').focus(), 60);
+  }
+
+  function switchChat(id) {
+    if (id === state.chatId) return;
+    if (state.streaming) stopStreaming();
+    syncCurrent();
+    state.chatId = id;
+    state.sessionId = id;
+    state.attachments = [];
+    paintAttachments();
+    hydrateCurrent();
+    saveChats();
+    rebuildThread();
+    setTab('chat');
+    paintMe();
+    updateSendState();
+  }
+
+  function deleteChat(id) {
+    if (state.streaming && id === state.chatId) stopStreaming();
+    state.chats = state.chats.filter((c) => c.id !== id);
+    if (!state.chats.length) {
+      saveChats();
+      newChat();
+      renderChatList();
+      return;
+    }
+    if (state.chatId === id) {
+      state.chatId = state.chats[0].id;
+      state.sessionId = state.chatId;
+      hydrateCurrent();
+      rebuildThread();
+    }
+    saveChats();
+    renderChatList();
+    paintMe();
+  }
+
+  function renameChat(id) {
+    const cur = state.chats.find((c) => c.id === id);
+    if (!cur) return;
+    const v = window.prompt('重命名对话', cur.title || '');
+    if (v === null) return;
+    const t = v.trim();
+    if (!t) return;
+    cur.title = t.slice(0, 40);
+    saveChats();
+    renderChatList();
+  }
+
+  function togglePin(id) {
+    const cur = state.chats.find((c) => c.id === id);
+    if (!cur) return;
+    cur.pinned = !cur.pinned;
+    state.chats.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt);
+    saveChats();
+    renderChatList();
+    haptic();
+  }
+
+  function fmtTime(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const now = new Date();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const sameDay = d.toDateString() === now.toDateString();
+    if (sameDay) return hh + ':' + mm;
+    const y = new Date(now);
+    y.setDate(now.getDate() - 1);
+    if (d.toDateString() === y.toDateString()) return '昨天 ' + hh + ':' + mm;
+    return d.getMonth() + 1 + '月' + d.getDate() + '日';
+  }
+
+  function renderChatList() {
+    const box = $('chat-list');
+    if (!box) return;
+    box.innerHTML = '';
+    const q = state.chatFilter.trim().toLowerCase();
+    const list = q
+      ? state.chats.filter((c) => {
+          const t = String(c.title || '').toLowerCase();
+          if (t.indexOf(q) >= 0) return true;
+          return (c.messages || []).some((m) => String(m.content || '').toLowerCase().indexOf(q) >= 0);
+        })
+      : state.chats;
+
+    if (!list.length) {
+      const p = el('p', 'sheet-tip');
+      p.textContent = q ? '没有匹配的对话' : '还没有对话';
+      box.appendChild(p);
+      return;
+    }
+
+    list.forEach((c) => {
+      const row = el('div', 'chat-row' + (c.id === state.chatId ? ' active' : ''));
+      row.setAttribute('role', 'button');
+      row.tabIndex = 0;
+
+      const main = el('div', 'ci-main');
+      const title = el('div', 'ci-title');
+      if (c.id === state.chatId) {
+        const d = el('span', 'live-dot');
+        title.appendChild(d);
+      }
+      const tt = el('span');
+      tt.textContent = c.title || '新对话';
+      title.appendChild(tt);
+      main.appendChild(title);
+
+      const meta = el('div', 'ci-meta');
+      if (c.pinned) {
+        const p = el('span', 'pin-mark');
+        p.appendChild(ico('pin'));
+        meta.appendChild(p);
+      }
+      const cnt = (c.messages || []).filter((m) => m.role === 'user').length;
+      meta.appendChild(document.createTextNode(cnt + ' 问 · ' + fmtTime(c.updatedAt)));
+      main.appendChild(meta);
+      row.appendChild(main);
+
+      const more = el('button', 'ci-more');
+      more.type = 'button';
+      more.setAttribute('aria-label', '更多操作');
+      more.appendChild(ico('sliders'));
+      more.onclick = (e) => {
+        e.stopPropagation();
+        chatActions(c);
+      };
+      row.appendChild(more);
+
+      row.onclick = () => switchChat(c.id);
+      row.onkeydown = (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          switchChat(c.id);
+        }
+      };
+      box.appendChild(row);
+    });
+  }
+
+  function chatActions(c) {
+    const opts = [c.pinned ? '取消置顶' : '置顶', '重命名', '删除'];
+    const pick = window.prompt(
+      '「' + (c.title || '新对话') + '」\n1. ' + opts[0] + '\n2. ' + opts[1] + '\n3. ' + opts[2] + '\n\n输入序号：',
+      '1'
+    );
+    if (pick === null) return;
+    const n = String(pick).trim();
+    if (n === '1') togglePin(c.id);
+    else if (n === '2') renameChat(c.id);
+    else if (n === '3') {
+      if (window.confirm('删除「' + (c.title || '新对话') + '」？此操作不可恢复。')) deleteChat(c.id);
+    }
+  }
+
+  // ============================================================
+  // 系统提示词
+  // ============================================================
+  function paintSystem() {
+    const box = $('set-system');
+    if (!box) return;
+    const v = state.system || '';
+    box.textContent = v ? (v.length > 12 ? v.slice(0, 12) + '…' : v) : '未设置';
+  }
+
+  function renderPresets() {
+    const box = $('preset-list');
+    if (!box) return;
+    box.innerHTML = '';
+    SYSTEM_PRESETS.forEach((p) => {
+      const b = el('button', 'preset');
+      b.type = 'button';
+      b.textContent = p.label;
+      b.onclick = () => {
+        $('system-input').value = p.text;
+        haptic();
+      };
+      box.appendChild(b);
+    });
+  }
+
+  function openSystemSheet() {
+    $('system-input').value = state.system || '';
+    renderPresets();
+    openSheet('system-sheet');
+  }
+
+  function saveSystem() {
+    state.system = $('system-input').value.trim().slice(0, 4000);
+    syncCurrent();
+    paintSystem();
+    paintMe();
+    closeSheet('system-sheet');
+    toast(state.system ? '已设置系统提示词' : '已清除系统提示词');
+    // 记住最近使用，供下次新建对话参考（不自动套用）
+    if (state.system) lsSet(SYSTEM_KEY, state.system);
+  }
+
+  // ============================================================
+  // 连接诊断
+  // ============================================================
+  function paintConn() {
+    const mode = connLabel();
+    const pairs = [
+      ['login-proxy', mode],
+      ['set-mode', mode],
+      ['diag-mode', mode],
+    ];
+    pairs.forEach(([id, v]) => {
+      const e = $(id);
+      if (e) e.textContent = v;
+    });
+  }
+
+  async function probeProxy(base) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 3000);
+    const started = Date.now();
+    try {
+      const r = await fetch(base + '/api/health', { signal: ctrl.signal, cache: 'no-store' });
+      if (!r.ok) return { ok: false, ms: Date.now() - started, reason: 'HTTP ' + r.status };
+      const d = await r.json().catch(() => null);
+      if (!d || d.ok !== true || !(d.upstream || d.service)) {
+        return { ok: false, ms: Date.now() - started, reason: '该地址不是小浣熊代理' };
+      }
+      return { ok: true, ms: Date.now() - started, data: d };
+    } catch (e) {
+      return { ok: false, ms: Date.now() - started, reason: e && e.name === 'AbortError' ? '超时' : '连不上' };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function proxyCandidates() {
+    const list = [];
+    const push = (v) => {
+      v = String(v || '').trim().replace(/\/+$/, '');
+      if (v && list.indexOf(v) < 0) list.push(v);
+    };
+    push(proxyBase());
+    push(API_BASE);
+    push('http://127.0.0.1:8799');
+    push('http://localhost:8799');
+    const host = location.hostname;
+    if (host && host !== 'localhost' && host !== '127.0.0.1') push('http://' + host + ':8799');
+    return list;
+  }
+
+  async function autoDetectProxy() {
+    const list = proxyCandidates();
+    for (let i = 0; i < list.length; i++) {
+      const r = await probeProxy(list[i]);
+      if (r.ok) return list[i];
+    }
+    return '';
+  }
+
+  async function testConn() {
+    const el2 = $('set-conn');
+    const net = $('diag-net');
+    if (el2) {
+      el2.textContent = '检测中…';
+      el2.className = 'row-value';
+    }
+    if (net) {
+      net.textContent = '检测中…';
+      net.className = '';
+    }
+
+    const viaNative = !!(window.RaccoonNative && window.RaccoonNative.available());
+    let r;
+    try {
+      r = isDirect() ? await window.RaccoonDirect.probe(8000) : await probeProxy(proxyBase());
+    } catch {
+      r = { ok: false, message: '检测失败' };
+    }
+    const ok = !!r.ok;
+    const label = ok
+      ? '已连接' + (r.ms ? ' · ' + r.ms + 'ms' : '') + (isDirect() ? (viaNative ? ' · 原生' : ' · 浏览器') : '')
+      : r.message || r.reason || '连不上';
+
+    if (el2) {
+      el2.textContent = ok ? '已连接' : label;
+      el2.className = 'row-value ' + (ok ? 'conn-ok' : 'conn-bad');
+    }
+    if (net) {
+      net.textContent = label;
+      net.className = ok ? 'conn-ok' : 'conn-bad';
+    }
+    return ok;
+  }
+
+  function openDiag() {
+    paintConn();
+    const a = $('diag-auth');
+    if (a) a.textContent = window.RaccoonDirect.hasAuth() ? '已登录' : '未登录';
+    const err = $('diag-err');
+    if (err) err.textContent = state.lastError || '—';
+    openSheet('diag-sheet');
+    testConn();
+  }
+
+  function applyConnChange(tip) {
+    paintConn();
+    toast(tip);
+    hideMsg();
+    window.RaccoonDirect.clearAuth();
+    loadMe().then((ok) => {
+      if (ok) {
+        showView('app');
+        setTab('chat');
+        enterApp();
+      } else {
+        showView('login');
+      }
+    });
+  }
+
+  async function useProxy() {
+    const input = window.prompt(
+      '代理服务地址（例如 http://127.0.0.1:8799）\n留空 = 自动检测本机代理；点「取消」则不改',
+      proxyBase() || ''
+    );
+    if (input === null) return;
+
+    let v = input.trim().replace(/\/+$/, '');
+    if (!v) {
+      toast('正在检测本机代理…');
+      v = await autoDetectProxy();
+      if (!v) return toast('没找到可用的代理，保持直连');
+    }
+
+    const r = await probeProxy(v);
+    if (!r.ok) return toast(v + '：' + (r.reason || '无法使用'));
+    lsSet(PROXY_KEY, v);
+    applyConnChange('已切换到代理 ' + v);
+  }
+
+  function useDirect() {
+    lsDel(PROXY_KEY);
+    applyConnChange('已恢复直连');
+  }
+
+  // ============================================================
+  // 语音
+  // ============================================================
   let recog = null;
   function setupVoice() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
-      $('btn-voice').classList.add('hidden');
+      const b = $('btn-voice');
+      if (b) b.classList.add('hidden');
       return;
     }
     try {
@@ -1116,7 +2040,7 @@
       }
       $('input').value = finalText + interim;
       autoGrow();
-      updateSend();
+      updateSendState();
     };
     recog.onend = () => $('btn-voice').classList.remove('listening');
     recog.onerror = () => $('btn-voice').classList.remove('listening');
@@ -1124,7 +2048,8 @@
 
   function toggleVoice() {
     if (!recog) return;
-    if ($('btn-voice').classList.contains('listening')) {
+    const btn = $('btn-voice');
+    if (btn.classList.contains('listening')) {
       try {
         recog.stop();
       } catch {}
@@ -1132,17 +2057,31 @@
     }
     try {
       recog.start();
-      $('btn-voice').classList.add('listening');
+      btn.classList.add('listening');
+      haptic();
     } catch {}
   }
 
-  // ---------- 工具 ----------
-  function esc(s) {
-    return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // ============================================================
+  // 进入应用
+  // ============================================================
+  async function enterApp() {
+    if (!state.chats.length) loadChats();
+    paintMe();
+    paintModelBar();
+    await Promise.all([loadMe(), loadCatalog()]);
+    paintModelBar();
+    paintMe();
+    if (!state.messages.length) rebuildThread();
+    else rebuildThread();
+    updateSendState();
   }
 
-  // ---------- 绑定 ----------
+  // ============================================================
+  // 绑定
+  // ============================================================
   function bind() {
+    // --- 登录 ---
     $('btn-send-code').onclick = requestCode;
     $('btn-login').onclick = doPhoneLogin;
     $('btn-token-go').onclick = doTokenLogin;
@@ -1151,80 +2090,94 @@
       panel.classList.toggle('hidden');
       if (!panel.classList.contains('hidden')) $('token-input').focus();
     };
-
     document.querySelectorAll('[data-back]').forEach((b) => {
       b.onclick = () => $('token-panel').classList.add('hidden');
     });
-    document.querySelectorAll('[data-close]').forEach((elm) => {
-      elm.onclick = () => closeSheet(elm.getAttribute('data-close'));
-    });
-    // Esc 关闭弹层（外接键盘 / 桌面调试常用）
-    document.addEventListener('keydown', (e) => {
-      if (e.key !== 'Escape') return;
-      if (!$('chat-sheet').classList.contains('hidden')) return closeSheet('chat-sheet');
-      if (!$('model-sheet').classList.contains('hidden')) return closeSheet('model-sheet');
-      if (!$('settings-sheet').classList.contains('hidden')) return closeSheet('settings-sheet');
-      if (!$('diag-sheet').classList.contains('hidden')) return closeSheet('diag-sheet');
-      if (!$('token-panel').classList.contains('hidden')) $('token-panel').classList.add('hidden');
+
+    // --- 弹层关闭 ---
+    document.querySelectorAll('[data-close]').forEach((n) => {
+      n.onclick = () => closeSheet(n.getAttribute('data-close'));
     });
 
-    $('nation').onchange = () => {
-      state.nation = $('nation').value;
-      state.verificationId = '';
-      $('code').value = '';
-    };
-    $('phone').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        if (state.verificationId) doPhoneLogin();
-        else requestCode();
-      }
-    });
-    $('code').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        doPhoneLogin();
-      }
-    });
-    $('token-input').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        doTokenLogin();
-      }
+    // --- 标签页 ---
+    document.querySelectorAll('.tab').forEach((t) => {
+      t.onclick = () => {
+        setTab(t.getAttribute('data-tab'));
+        haptic();
+      };
     });
 
-    $('btn-models').onclick = () => {
-      renderModelList();
-      openSheet('model-sheet');
-    };
+    // --- 顶栏 ---
     $('model-name').onclick = () => {
       renderModelList();
       openSheet('model-sheet');
     };
-    $('btn-settings').onclick = () => {
-      updateModelBar();
-      paintSystem();
-      refreshConnPanel();
-      openSheet('settings-sheet');
+    $('effort-chip').onclick = () => {
+      if (!reasoningSupported()) {
+        toast('当前模型不支持深度思考，请换一个带「推理」标记的模型');
+        return;
+      }
+      renderEffortList();
+      openSheet('effort-sheet');
     };
-    $('btn-chats').onclick = () => {
-      renderChatList();
-      openSheet('chat-sheet');
-    };
-    $('btn-new-chat').onclick = () => {
-      closeSheet('chat-sheet');
-      newChat();
-    };
-    $('btn-export').onclick = () => {
-      closeSheet('chat-sheet');
-      exportCurrent();
-    };
-    $('row-system').onclick = (e) => {
-      e.preventDefault();
-      editSystem();
+    $('btn-compose').onclick = () => newChat();
+    $('btn-points').onclick = () => {
+      setTab('me');
     };
 
-    // 代码块复制（内容会随流式刷新，用事件委托）
+    // --- 输入 ---
+    const ta = $('input');
+    ta.addEventListener('input', () => {
+      autoGrow();
+      updateSendState();
+    });
+    ta.addEventListener('focus', () => $('composer').querySelector('.composer-box').classList.add('focus'));
+    ta.addEventListener('blur', () => $('composer').querySelector('.composer-box').classList.remove('focus'));
+    ta.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+        e.preventDefault();
+        send();
+      }
+    });
+    $('btn-send').onclick = () => (state.streaming ? stopStreaming() : send());
+    $('btn-voice').onclick = toggleVoice;
+
+    // --- 附件 ---
+    $('btn-attach').onclick = () => openSheet('attach-sheet');
+    $('att-camera').onclick = () => {
+      closeSheet('attach-sheet');
+      $('file-camera').click();
+    };
+    $('att-photo').onclick = () => {
+      closeSheet('attach-sheet');
+      $('file-image').click();
+    };
+    $('att-file').onclick = () => {
+      closeSheet('attach-sheet');
+      $('file-doc').click();
+    };
+    $('file-image').addEventListener('change', (e) => {
+      addImageFiles(e.target.files);
+      e.target.value = '';
+    });
+    $('file-camera').addEventListener('change', (e) => {
+      addImageFiles(e.target.files);
+      e.target.value = '';
+    });
+    $('file-doc').addEventListener('change', (e) => {
+      addDocFiles(e.target.files);
+      e.target.value = '';
+    });
+
+    // --- 滚动 ---
+    $('messages').addEventListener('scroll', () => {
+      updateScrollButton();
+      const bar = document.querySelector('.appbar');
+      if (bar) bar.classList.toggle('scrolled', $('messages').scrollTop > 2);
+    }, { passive: true });
+    $('btn-scroll-bottom').onclick = () => scrollBottom(true);
+
+    // --- 代码复制（事件委托，流式刷新也不会丢） ---
     $('messages').addEventListener('click', (e) => {
       const btn = e.target && e.target.closest ? e.target.closest('.code-copy') : null;
       if (!btn) return;
@@ -1233,198 +2186,31 @@
       copyText(pre ? pre.textContent : '', '代码已复制');
     });
 
-    // ---------- 连接面板 / 诊断 ----------
-    function paintConn() {
-      const mode = connLabel();
-      const l1 = $('login-proxy');
-      const l2 = $('set-mode');
-      const l3 = $('set-proxy');
-      const l4 = $('diag-mode');
-      if (l1) l1.textContent = mode;
-      if (l2) l2.textContent = mode;
-      if (l3) l3.textContent = isDirect() ? '未启用' : proxyBase().replace(/^https?:\/\//, '');
-      if (l4) l4.textContent = mode;
-    }
+    // --- 历史 ---
+    $('btn-new-chat').onclick = () => newChat();
+    $('chat-search').addEventListener('input', (e) => {
+      state.chatFilter = e.target.value;
+      renderChatList();
+    });
 
-    function refreshConnPanel() {
-      paintConn();
-      testConn();
-    }
-
-    // 探测一个地址是不是真的小浣熊代理（不是 200 就算通，必须能对上暗号）
-    async function probeProxy(base) {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 3000);
-      const started = Date.now();
-      try {
-        const r = await fetch(base + '/api/health', { signal: ctrl.signal, cache: 'no-store' });
-        if (!r.ok) return { ok: false, ms: Date.now() - started, reason: 'HTTP ' + r.status };
-        const d = await r.json().catch(() => null);
-        if (!d || d.ok !== true || !(d.upstream || d.service)) {
-          return { ok: false, ms: Date.now() - started, reason: '该地址不是小浣熊代理' };
-        }
-        return { ok: true, ms: Date.now() - started, data: d };
-      } catch (e) {
-        return {
-          ok: false,
-          ms: Date.now() - started,
-          reason: e && e.name === 'AbortError' ? '超时' : '连不上',
-        };
-      } finally {
-        clearTimeout(timer);
-      }
-    }
-
-    function proxyCandidates() {
-      const list = [];
-      const push = (v) => {
-        v = String(v || '').trim().replace(/\/+$/, '');
-        if (v && list.indexOf(v) < 0) list.push(v);
-      };
-      push(proxyBase());
-      push(API_BASE);
-      push('http://127.0.0.1:8799');
-      push('http://localhost:8799');
-      const host = location.hostname;
-      if (host && host !== 'localhost' && host !== '127.0.0.1') push('http://' + host + ':8799');
-      return list;
-    }
-
-    async function autoDetectProxy() {
-      const list = proxyCandidates();
-      for (let i = 0; i < list.length; i++) {
-        const r = await probeProxy(list[i]);
-        if (r.ok) return list[i];
-      }
-      return '';
-    }
-
-    async function testConn() {
-      const el2 = $('set-conn');
-      const net = $('diag-net');
-      if (el2) {
-        el2.textContent = '检测中…';
-        el2.className = '';
-      }
-      if (net) {
-        net.textContent = '检测中…';
-        net.className = '';
-      }
-
-      const viaNative = !!(window.RaccoonNative && window.RaccoonNative.available());
-      const r = isDirect() ? await window.RaccoonDirect.probe(8000) : await probeProxy(proxyBase());
-      const ok = !!r.ok;
-      const label = ok
-        ? '已连接' + (r.ms ? ' · ' + r.ms + 'ms' : '') + (isDirect() ? (viaNative ? ' · 原生通道' : ' · 浏览器通道') : '')
-        : r.message || r.reason || '连不上';
-
-      if (el2) {
-        el2.textContent = ok ? '已连接' : label;
-        el2.className = ok ? 'conn-ok' : 'conn-bad';
-      }
-      if (net) {
-        net.textContent = label;
-        net.className = ok ? 'conn-ok' : 'conn-bad';
-      }
-      return ok;
-    }
-
-    function openDiag() {
-      paintConn();
-      const a = $('diag-auth');
-      if (a) a.textContent = window.RaccoonDirect.hasAuth() ? '已登录' : '未登录';
-      const err = $('diag-err');
-      if (err) err.textContent = state.lastError || '—';
-      openSheet('diag-sheet');
-      testConn();
-    }
-
-    function applyConnChange(tip) {
-      paintConn();
-      toast(tip);
-      hideMsg();
-      refreshConnPanel();
-      // 端口 / 通道变了，旧登录态不一定还能用
-      window.RaccoonDirect.clearAuth();
-      loadMe().then((ok) => {
-        if (ok) {
-          showView('chat');
-          enterChat();
-        } else {
-          showView('login');
-        }
-      });
-    }
-
-    async function useProxy() {
-      const input = window.prompt(
-        '代理服务地址（例如 http://127.0.0.1:8799）\n留空 = 自动检测本机代理；点「取消」则不改',
-        proxyBase() || ''
-      );
-      if (input === null) return;
-
-      let v = input.trim().replace(/\/+$/, '');
-      if (!v) {
-        toast('正在检测本机代理…');
-        v = await autoDetectProxy();
-        if (!v) {
-          toast('没找到可用的代理，保持直连');
-          return;
-        }
-      }
-
-      const r = await probeProxy(v);
-      if (!r.ok) {
-        toast(v + '：' + (r.reason || '无法使用'));
+    // --- 我的 ---
+    $('row-effort').onclick = () => {
+      if (!reasoningSupported()) {
+        toast('当前模型不支持深度思考，请换一个带「推理」标记的模型');
         return;
       }
-      try {
-        localStorage.setItem(PROXY_KEY, v);
-      } catch {}
-      applyConnChange('已切换到代理 ' + v);
-    }
-
-    function useDirect() {
-      try {
-        localStorage.removeItem(PROXY_KEY);
-      } catch {}
-      applyConnChange('已恢复直连');
-    }
-
-    $('row-proxy').onclick = (e) => {
-      e.preventDefault();
-      useProxy();
+      renderEffortList();
+      openSheet('effort-sheet');
     };
-    $('btn-conn-login').onclick = (e) => {
-      e.preventDefault();
-      openDiag();
-    };
-    $('btn-test-conn').onclick = (e) => {
-      e.preventDefault();
-      testConn();
-    };
+    $('row-system').onclick = () => openSystemSheet();
+    $('btn-system-save').onclick = saveSystem;
+    $('row-export').onclick = () => exportCurrent();
+    $('btn-test-conn').onclick = () => testConn();
+    $('row-proxy').onclick = () => useProxy();
+    $('btn-conn-login').onclick = () => openDiag();
     $('diag-retest').onclick = () => testConn();
     $('diag-proxy').onclick = () => useProxy();
     $('diag-direct').onclick = () => useDirect();
-
-    $('think-toggle').onchange = (e) => {
-      state.thinking = e.target.checked;
-      updateModelBar();
-    };
-
-    $('btn-send').onclick = () => (state.streaming ? stopStreaming() : send());
-    $('input').addEventListener('input', () => {
-      autoGrow();
-      updateSend();
-    });
-    $('input').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
-        e.preventDefault();
-        send();
-      }
-    });
-    $('btn-voice').onclick = toggleVoice;
-
     $('btn-checkin').onclick = async () => {
       try {
         const d = await api('/api/checkin', { method: 'POST' });
@@ -1444,19 +2230,31 @@
       loadMe();
     };
     $('btn-logout').onclick = () => {
-      closeSheet('settings-sheet');
+      if (!window.confirm('确定退出登录？')) return;
       logout(false);
     };
+
+    // --- 键盘 ---
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (closeTopSheet()) return;
+      }
+    });
   }
 
-  // ---------- 启动 ----------
+  // ============================================================
+  // 启动
+  // ============================================================
   (async function init() {
     bind();
-    $('login-proxy').textContent = connLabel();
+    loadPrefs();
+    paintConn();
     setupVoice();
     autoGrow();
-    updateSend();
+    updateSendState();
+    paintAttachments();
 
+    // 配置
     try {
       const cfg = await api('/api/login/config');
       if (cfg && cfg.ok) {
@@ -1471,32 +2269,48 @@
     }
     renderNation();
 
-    // 本地没有 token 就别去问接口，省得开局报「未登录」
+    // 已登录：直接进主界面
     const localAuth = window.RaccoonDirect.hasAuth() || !isDirect();
+    let entered = false;
     if (localAuth) {
       try {
         const d = await api('/api/me');
         if (d && d.ok) {
           applyMe(d);
-          showView('chat');
-          enterChat();
-          return;
+          showView('app');
+          setTab('chat');
+          await enterApp();
+          entered = true;
         }
       } catch (e) {
-        // 未登录是正常状态，不用报错；网络 / 密钥 / 配置问题才提示
         const m = (e && e.message) || '';
         if (m && !/^未登录|登录已失效/.test(m)) showMsg(m);
       }
     }
-    showView('login');
 
-    // 便于排查：#chats / #settings 直接打开对应面板
-    if (location.hash === '#chats') {
-      renderChatList();
-      openSheet('chat-sheet');
-    } else if (location.hash === '#settings') {
-      paintSystem();
-      openSheet('settings-sheet');
+    if (!entered) {
+      showView('login');
+    }
+
+    // 收起启动遮罩
+    const boot = $('boot');
+    if (boot) {
+      setTimeout(() => boot.classList.add('gone'), 120);
+      setTimeout(() => {
+        boot.style.display = 'none';
+        state.booted = true;
+      }, 420);
+    }
+
+    // 便于排查：#chats / #settings
+    if (location.hash === '#chats' && entered) setTab('history');
+    else if (location.hash === '#settings' && entered) setTab('me');
+
+    // 键盘弹起时贴底
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => {
+        if (document.activeElement === $('input')) setTimeout(() => scrollBottom(true), 60);
+      });
     }
   })();
 })();

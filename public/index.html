@@ -1,243 +1,412 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#0b0f17">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+<meta name="description" content="小浣熊移动端：多模型对话、深度思考、图片与文件问答。">
 <title>小浣熊</title>
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon.svg">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 
-<!-- ============ 登录 ============ -->
-<section id="login-view" class="view active">
-  <div class="login-wrap">
-    <div class="brand">
-      <svg class="brand-mark" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-        <defs>
-          <linearGradient id="raccoon-face" x1="24" y1="12" x2="24" y2="41" gradientUnits="userSpaceOnUse">
-            <stop stop-color="#2e3a4f"/><stop offset="1" stop-color="#161d29"/>
-          </linearGradient>
-          <linearGradient id="raccoon-ring" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
-            <stop stop-color="#f59e0b" stop-opacity=".55"/><stop offset="1" stop-color="#f59e0b" stop-opacity="0"/>
-          </linearGradient>
-        </defs>
-        <circle cx="24" cy="24" r="22.5" fill="url(#raccoon-ring)" opacity=".16"/>
-        <circle cx="24" cy="24" r="21" stroke="url(#raccoon-ring)" stroke-width="1.2"/>
-        <circle cx="11.5" cy="15" r="6.2" fill="#243044"/>
-        <circle cx="36.5" cy="15" r="6.2" fill="#243044"/>
-        <circle cx="11.5" cy="15" r="3" fill="#f59e0b" opacity=".42"/>
-        <circle cx="36.5" cy="15" r="3" fill="#f59e0b" opacity=".42"/>
-        <ellipse cx="24" cy="26" rx="15.6" ry="14.2" fill="url(#raccoon-face)" stroke="#3a4a63" stroke-width="1"/>
-        <path d="M9.8 23.4c0-3.6 3.3-6.1 7.4-6.1 3.8 0 6.3 2.5 6.3 5.9 0 3.5-2.9 6.2-6.7 6.2-4.1 0-7-2.4-7-6z" fill="#080c13"/>
-        <path d="M38.2 23.4c0-3.6-3.3-6.1-7.4-6.1-3.8 0-6.3 2.5-6.3 5.9 0 3.5 2.9 6.2 6.7 6.2 4.1 0 7-2.4 7-6z" fill="#080c13"/>
-        <circle cx="17.1" cy="23.8" r="2.15" fill="#ffffff"/>
-        <circle cx="30.9" cy="23.8" r="2.15" fill="#ffffff"/>
-        <circle cx="17.5" cy="24.2" r="1.15" fill="#0b0f17"/>
-        <circle cx="31.3" cy="24.2" r="1.15" fill="#0b0f17"/>
-        <circle cx="17.9" cy="23.5" r=".55" fill="#fff" opacity=".9"/>
-        <circle cx="31.7" cy="23.5" r=".55" fill="#fff" opacity=".9"/>
-        <path d="M24 29.6l-2.3 2.1h4.6L24 29.6z" fill="#f59e0b"/>
-        <path d="M20.8 34.2c1.1 1.5 5.3 1.5 6.4 0" stroke="#7b8aa1" stroke-width="1.3" stroke-linecap="round"/>
-      </svg>
+<!-- ================= 图标集（一套，1.75 描边） ================= -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <g id="s" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"></g>
+  </defs>
+  <symbol id="i-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5h16v10.5H9.5L4 20.5z"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 7.8V12l3 2"/></symbol>
+  <symbol id="i-me" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.2" r="3.6"/><path d="M4.8 20c1.3-3.7 4-5.6 7.2-5.6s5.9 1.9 7.2 5.6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5.5v13M5.5 12h13"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="10" rx="3"/><path d="M5.5 11.2a6.5 6.5 0 0 0 13 0M12 17.7V21"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5.5M6.5 11L12 5.5 17.5 11"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24" fill="currentColor"><rect x="7.5" y="7.5" width="9" height="9" rx="2.2"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><circle cx="9" cy="10" r="1.5"/><path d="M4.5 17.2l4.7-4.7a2 2 0 0 1 2.8 0l3.4 3.4 1.6-1.6a2 2 0 0 1 2.8 0l1.4 1.4"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8.8h3.3L8.5 6h7l1.7 2.8h3.3v10.4h-17z"/><circle cx="12" cy="13.6" r="3.1"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 3.5h7L18 8.3v12.2H6.2z"/><path d="M13 3.5v5h5"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 6.2l11.6 11.6M17.8 6.2L6.2 17.8"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 9.4l5.8 5.8 5.8-5.8"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.4 6.2l5.8 5.8-5.8 5.8"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.6 4.6L19 7.6"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.6"/><path d="M15.2 6.6A2.6 2.6 0 0 0 12.6 4H6.6A2.6 2.6 0 0 0 4 6.6v6a2.6 2.6 0 0 0 2.6 2.6"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M19.6 12a7.6 7.6 0 1 1-2.4-5.5"/><path d="M19.6 4.4v4.4h-4.4"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 7h14.8M9.6 7V5.2h4.8V7M6.6 7l.9 12.8h9l.9-12.8"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4.2L20 8.2 15.8 4 4 15.8z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.4"/><path d="M15.8 15.8L20.5 20.5"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6v10.8M8.2 7.4L12 3.6l3.8 3.8"/><path d="M5.4 13.6v6.8h13.2v-6.8"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.2 3.6h5.6l-1 4.8 3 3.2v2H7.2v-2l3-3.2z"/><path d="M12 13.6v6.8"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h8.5M17.5 8H20M4 16h2.5M11.5 16H20"/><circle cx="15" cy="8" r="2.4"/><circle cx="9" cy="16" r="2.4"/></symbol>
+  <symbol id="i-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 5H5.2v14h5.3"/><path d="M19.8 12H9.4M14.2 7.4L9.4 12l4.8 4.6"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M13.2 3.4L6.4 13.2h4.6l-1 7.4 7-10h-4.6z"/></symbol>
+  <symbol id="i-coin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.2"/><path d="M9.4 12h5.2M12 8.6v6.8"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 12S6.2 6.6 12 6.6 21.4 12 21.4 12 17.8 17.4 12 17.4 2.6 12 2.6 12z"/><circle cx="12" cy="12" r="2.5"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.2 13.8a3.6 3.6 0 0 0 5.1 0l3-3a3.6 3.6 0 0 0-5.1-5.1l-1.4 1.4"/><path d="M13.8 10.2a3.6 3.6 0 0 0-5.1 0l-3 3a3.6 3.6 0 0 0 5.1 5.1l1.4-1.4"/></symbol>
+</svg>
+
+<!-- ================= 启动遮罩 ================= -->
+<div id="boot" class="boot">
+  <div class="boot-mark" aria-hidden="true">
+    <svg viewBox="0 0 48 48" fill="none">
+      <ellipse cx="24" cy="26.5" rx="15.4" ry="14" fill="#151515" stroke="#2a2a2a" stroke-width="1"/>
+      <circle cx="11.6" cy="15.2" r="6" fill="#1b1b1b" stroke="#2a2a2a" stroke-width="1"/>
+      <circle cx="36.4" cy="15.2" r="6" fill="#1b1b1b" stroke="#2a2a2a" stroke-width="1"/>
+      <path d="M9.8 23.6c0-3.6 3.3-6.1 7.4-6.1 3.8 0 6.3 2.5 6.3 5.9 0 3.5-2.9 6.2-6.7 6.2-4.1 0-7-2.4-7-6z" fill="#000"/>
+      <path d="M38.2 23.6c0-3.6-3.3-6.1-7.4-6.1-3.8 0-6.3 2.5-6.3 5.9 0 3.5 2.9 6.2 6.7 6.2 4.1 0 7-2.4 7-6z" fill="#000"/>
+      <circle cx="17.2" cy="24" r="2.1" fill="#f59e0b"/>
+      <circle cx="30.8" cy="24" r="2.1" fill="#f59e0b"/>
+      <path d="M24 29.8l-2.2 2h4.4z" fill="#f59e0b"/>
+    </svg>
+  </div>
+  <p class="boot-name">小浣熊</p>
+</div>
+
+<!-- ================= 登录 ================= -->
+<section id="login-view" class="view">
+  <div class="login-scroll">
+    <header class="login-head">
+      <div class="login-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48" fill="none">
+          <ellipse cx="24" cy="26.5" rx="15.4" ry="14" fill="#151515" stroke="#2a2a2a" stroke-width="1"/>
+          <circle cx="11.6" cy="15.2" r="6" fill="#1b1b1b" stroke="#2a2a2a" stroke-width="1"/>
+          <circle cx="36.4" cy="15.2" r="6" fill="#1b1b1b" stroke="#2a2a2a" stroke-width="1"/>
+          <path d="M9.8 23.6c0-3.6 3.3-6.1 7.4-6.1 3.8 0 6.3 2.5 6.3 5.9 0 3.5-2.9 6.2-6.7 6.2-4.1 0-7-2.4-7-6z" fill="#000"/>
+          <path d="M38.2 23.6c0-3.6-3.3-6.1-7.4-6.1-3.8 0-6.3 2.5-6.3 5.9 0 3.5 2.9 6.2 6.7 6.2 4.1 0 7-2.4 7-6z" fill="#000"/>
+          <circle cx="17.2" cy="24" r="2.1" fill="#f59e0b"/>
+          <circle cx="30.8" cy="24" r="2.1" fill="#f59e0b"/>
+          <path d="M24 29.8l-2.2 2h4.4z" fill="#f59e0b"/>
+        </svg>
+      </div>
       <h1>小浣熊</h1>
-      <p class="brand-sub">多模型 · 深度思考 · 手机端</p>
-    </div>
+      <p class="login-sub">多模型 · 深度思考 · 手机端</p>
+    </header>
 
-    <!-- 手机号验证码登录 -->
-    <div class="login-actions">
-      <label class="field-label" for="phone">手机号</label>
-      <div class="field-row">
-        <select id="nation" class="nation-select" aria-label="国家/地区代码"></select>
-        <input id="phone" class="field-input" type="tel" inputmode="numeric" autocomplete="tel"
-               placeholder="请输入手机号" maxlength="20">
+    <div class="login-form">
+      <div class="field">
+        <label for="phone">手机号</label>
+        <div class="field-combo">
+          <select id="nation" aria-label="国家/地区代码"></select>
+          <input id="phone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="请输入手机号" maxlength="20">
+        </div>
       </div>
 
-      <label class="field-label" for="code">短信验证码</label>
-      <div class="field-row">
-        <input id="code" class="field-input" type="text" inputmode="numeric" autocomplete="one-time-code"
-               placeholder="6 位验证码" maxlength="8">
-        <button id="btn-send-code" class="btn-code" type="button">获取验证码</button>
+      <div class="field">
+        <label for="code">短信验证码</label>
+        <div class="field-combo">
+          <input id="code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="6 位验证码" maxlength="8">
+          <button id="btn-send-code" class="btn-code" type="button">获取验证码</button>
+        </div>
       </div>
 
-      <button id="btn-login" class="btn primary" type="button">登录 / 注册</button>
-      <p class="login-hint">未注册的手机号将自动创建账号</p>
+      <button id="btn-login" class="btn btn-primary" type="button">登录 / 注册</button>
+      <p class="hint">未注册的手机号将自动创建账号</p>
     </div>
 
-    <div class="login-alt">
-      <button id="btn-token-toggle" class="link-btn" type="button">使用 Token 登录</button>
-    </div>
+    <button id="btn-token-toggle" class="btn-text" type="button">使用 Token 登录</button>
 
-    <div id="token-panel" class="panel hidden">
-      <div class="panel-head">
+    <div id="token-panel" class="token-panel hidden">
+      <div class="token-head">
         <span>Token 登录</span>
-        <button class="icon-btn sm" data-back="token" type="button" aria-label="关闭">✕</button>
+        <button class="icon-btn sm" data-back="token" type="button" aria-label="关闭"><svg class="icon"><use href="#i-close"/></svg></button>
       </div>
       <textarea id="token-input" placeholder="粘贴 access_token（JWT，可带 Bearer 前缀）" spellcheck="false"></textarea>
-      <button id="btn-token-go" class="btn primary" type="button">登录</button>
+      <button id="btn-token-go" class="btn btn-primary" type="button">登录</button>
     </div>
 
     <p id="login-msg" class="login-msg hidden" role="alert"></p>
-    <p class="login-foot">
+
+    <footer class="login-foot">
       <span id="login-proxy" class="mono">自动 · 直连官方</span>
-      <button id="btn-conn-login" class="linkish" type="button">诊断</button>
-    </p>
+      <span class="dot-sep">·</span>
+      <button id="btn-conn-login" class="btn-text sm" type="button">诊断</button>
+    </footer>
   </div>
 
-  <!-- 阿里云人机验证的挂载点（SDK 会把验证码渲染在这里） -->
   <div id="cap-element"></div>
   <button id="cap-button" type="button" hidden>captcha</button>
 </section>
 
-<!-- ============ 聊天 ============ -->
-<section id="chat-view" class="view">
-  <header class="topbar">
-    <div class="top-left">
-      <span class="status-dot" id="status-dot"></span>
-      <span class="top-name" id="me-name">小浣熊</span>
-      <button id="btn-chats" class="icon-btn sm" title="对话记录" type="button" aria-label="对话记录">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      </button>
-    </div>
-    <div class="top-right">
-      <span class="points" id="points-badge">积分</span>
-      <button id="btn-models" class="icon-btn" title="选择模型" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
-      </button>
-      <button id="btn-settings" class="icon-btn" title="设置" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      </button>
-    </div>
-  </header>
+<!-- ================= 主应用 ================= -->
+<section id="app-view" class="view">
 
-  <div class="model-bar">
-    <button id="model-name" class="model-pill" type="button">
-      <span class="model-pill-label">模型</span>
-      <span class="model-pill-val" id="model-name-val">默认</span>
-      <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+  <!-- ---------- 对话 ---------- -->
+  <div class="pane" id="pane-chat" data-pane="chat">
+    <header class="appbar">
+      <div class="appbar-row">
+        <div class="appbar-title">
+          <span class="dot" id="status-dot" aria-hidden="true"></span>
+          <span id="appbar-title">小浣熊</span>
+        </div>
+        <div class="appbar-actions">
+          <button id="btn-points" class="chip" type="button" aria-label="剩余积分">
+            <svg class="icon"><use href="#i-coin"/></svg><span id="points-badge">—</span>
+          </button>
+          <button id="btn-compose" class="icon-btn" type="button" aria-label="新建对话">
+            <svg class="icon"><use href="#i-edit"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="appbar-row sub">
+        <button id="model-name" class="chip chip-model" type="button">
+          <span id="model-name-val">默认模型</span>
+          <svg class="icon sm"><use href="#i-down"/></svg>
+        </button>
+        <button id="effort-chip" class="chip chip-effort" type="button">
+          <svg class="icon"><use href="#i-bolt"/></svg><span id="effort-label">深度思考</span>
+        </button>
+      </div>
+    </header>
+
+    <main id="messages" class="thread" aria-live="polite"></main>
+
+    <button id="btn-scroll-bottom" class="scroll-bottom hidden" type="button" aria-label="回到底部">
+      <svg class="icon"><use href="#i-down"/></svg>
     </button>
-    <label class="switch">
-      <input type="checkbox" id="think-toggle">
-      <span class="switch-track"><span class="switch-thumb"></span></span>
-      <span class="switch-label">深度思考</span>
-    </label>
+
+    <div class="composer" id="composer">
+      <div id="attachment-tray" class="attach-tray hidden"></div>
+      <div class="composer-box">
+        <button id="btn-attach" class="icon-btn ghost" type="button" aria-label="添加附件">
+          <svg class="icon"><use href="#i-plus"/></svg>
+        </button>
+        <textarea id="input" rows="1" placeholder="发消息…" enterkeyhint="send"></textarea>
+        <button id="btn-voice" class="icon-btn ghost" type="button" aria-label="语音输入">
+          <svg class="icon"><use href="#i-mic"/></svg>
+        </button>
+        <button id="btn-send" class="send-btn" type="button" disabled aria-label="发送">
+          <svg class="icon ico-send"><use href="#i-send"/></svg>
+          <svg class="icon ico-stop hidden"><use href="#i-stop"/></svg>
+        </button>
+      </div>
+    </div>
   </div>
 
-  <main id="messages" class="messages"></main>
+  <!-- ---------- 历史 ---------- -->
+  <div class="pane" id="pane-history" data-pane="history">
+    <header class="appbar">
+      <div class="appbar-row">
+        <div class="appbar-title"><span>对话记录</span></div>
+        <div class="appbar-actions">
+          <button id="btn-new-chat" class="icon-btn" type="button" aria-label="新建对话">
+            <svg class="icon"><use href="#i-plus"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="appbar-row sub">
+        <div class="search-box">
+          <svg class="icon sm"><use href="#i-search"/></svg>
+          <input id="chat-search" type="search" placeholder="搜索对话" enterkeyhint="search">
+        </div>
+      </div>
+    </header>
+    <main id="chat-list" class="list-scroll"></main>
+  </div>
 
-  <footer class="composer">
-    <button id="btn-voice" class="icon-btn" title="语音输入" type="button">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></svg>
+  <!-- ---------- 我的 ---------- -->
+  <div class="pane" id="pane-me" data-pane="me">
+    <header class="appbar">
+      <div class="appbar-row">
+        <div class="appbar-title"><span>我的</span></div>
+      </div>
+    </header>
+    <main class="list-scroll">
+      <div class="profile">
+        <div class="avatar" aria-hidden="true">
+          <svg viewBox="0 0 48 48" fill="none">
+            <ellipse cx="24" cy="26.5" rx="15.4" ry="14" fill="#151515" stroke="#2a2a2a" stroke-width="1"/>
+            <path d="M9.8 23.6c0-3.6 3.3-6.1 7.4-6.1 3.8 0 6.3 2.5 6.3 5.9 0 3.5-2.9 6.2-6.7 6.2-4.1 0-7-2.4-7-6z" fill="#000"/>
+            <path d="M38.2 23.6c0-3.6-3.3-6.1-7.4-6.1-3.8 0-6.3 2.5-6.3 5.9 0 3.5 2.9 6.2 6.7 6.2 4.1 0 7-2.4 7-6z" fill="#000"/>
+            <circle cx="17.2" cy="24" r="2.1" fill="#f59e0b"/>
+            <circle cx="30.8" cy="24" r="2.1" fill="#f59e0b"/>
+          </svg>
+        </div>
+        <div class="profile-main">
+          <div id="me-name">小浣熊</div>
+          <div id="me-phone" class="sub">—</div>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat">
+          <span class="stat-num" id="set-points">—</span>
+          <span class="stat-label">剩余积分</span>
+        </div>
+        <div class="stat">
+          <span class="stat-num" id="set-chat-count">—</span>
+          <span class="stat-label">对话</span>
+        </div>
+        <div class="stat">
+          <span class="stat-num" id="set-model-short">—</span>
+          <span class="stat-label">当前模型</span>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">对话</div>
+        <button class="row" id="row-effort" type="button">
+          <span class="row-label">深度思考</span>
+          <span class="row-value" id="set-think">关闭</span>
+          <svg class="icon chev"><use href="#i-right"/></svg>
+        </button>
+        <button class="row" id="row-system" type="button">
+          <span class="row-label">系统提示词</span>
+          <span class="row-value" id="set-system">未设置</span>
+          <svg class="icon chev"><use href="#i-right"/></svg>
+        </button>
+        <button class="row" id="row-export" type="button">
+          <span class="row-label">导出当前对话</span>
+          <span class="row-value">Markdown</span>
+        </button>
+      </div>
+
+      <div class="group">
+        <div class="group-title">连接</div>
+        <button class="row" id="btn-test-conn" type="button">
+          <span class="row-label">连接状态</span>
+          <span class="row-value" id="set-conn">检测中…</span>
+        </button>
+        <button class="row" id="row-proxy" type="button">
+          <span class="row-label">通道</span>
+          <span class="row-value mono" id="set-mode">自动 · 直连官方</span>
+          <svg class="icon chev"><use href="#i-right"/></svg>
+        </button>
+      </div>
+
+      <div class="group">
+        <div class="group-title">积分</div>
+        <button class="row" id="btn-checkin" type="button">
+          <span class="row-label">领取每日积分</span>
+          <svg class="icon chev"><use href="#i-right"/></svg>
+        </button>
+        <button class="row" id="btn-onboarding" type="button">
+          <span class="row-label">领取新手奖励</span>
+          <svg class="icon chev"><use href="#i-right"/></svg>
+        </button>
+      </div>
+
+      <div class="group">
+        <button class="row row-danger" id="btn-logout" type="button">
+          <span class="row-label">退出登录</span>
+        </button>
+      </div>
+
+      <p class="build-note" id="build-note">小浣熊移动端</p>
+    </main>
+  </div>
+
+  <!-- ---------- 底部导航 ---------- -->
+  <nav class="tabbar" role="tablist">
+    <button class="tab active" data-tab="chat" role="tab" type="button" aria-selected="true">
+      <svg class="icon"><use href="#i-chat"/></svg><span>对话</span>
     </button>
-    <div class="input-wrap">
-      <textarea id="input" rows="1" placeholder="输入消息，或点麦克风说话…"></textarea>
-    </div>
-    <button id="btn-send" class="send-btn" type="button" disabled aria-label="发送">
-      <svg class="ico-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4 20-7z"/></svg>
-      <svg class="ico-stop hidden" viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>
+    <button class="tab" data-tab="history" role="tab" type="button" aria-selected="false">
+      <svg class="icon"><use href="#i-history"/></svg><span>记录</span>
     </button>
-  </footer>
+    <button class="tab" data-tab="me" role="tab" type="button" aria-selected="false">
+      <svg class="icon"><use href="#i-me"/></svg><span>我的</span>
+    </button>
+  </nav>
 </section>
 
-<!-- ============ 模型选择 ============ -->
-<div id="model-sheet" class="sheet hidden">
+<!-- ================= 弹层：模型 ================= -->
+<div id="model-sheet" class="sheet hidden" role="dialog" aria-modal="true" aria-label="选择模型">
   <div class="sheet-scrim" data-close="model-sheet"></div>
   <div class="sheet-panel">
+    <div class="sheet-grip" aria-hidden="true"></div>
     <div class="sheet-head">
       <span>选择模型</span>
-      <button class="icon-btn sm" data-close="model-sheet" type="button">✕</button>
+      <button class="icon-btn sm" data-close="model-sheet" type="button" aria-label="关闭"><svg class="icon"><use href="#i-close"/></svg></button>
     </div>
     <div id="model-list" class="sheet-body"></div>
   </div>
 </div>
 
-<!-- ============ 对话记录 ============ -->
-<div id="chat-sheet" class="sheet hidden">
-  <div class="sheet-scrim" data-close="chat-sheet"></div>
+<!-- ================= 弹层：推理强度 ================= -->
+<div id="effort-sheet" class="sheet hidden" role="dialog" aria-modal="true" aria-label="推理强度">
+  <div class="sheet-scrim" data-close="effort-sheet"></div>
   <div class="sheet-panel">
+    <div class="sheet-grip" aria-hidden="true"></div>
     <div class="sheet-head">
-      <span>对话记录</span>
-      <button class="icon-btn sm" data-close="chat-sheet" type="button">✕</button>
+      <span>深度思考</span>
+      <button class="icon-btn sm" data-close="effort-sheet" type="button" aria-label="关闭"><svg class="icon"><use href="#i-close"/></svg></button>
+    </div>
+    <div id="effort-list" class="sheet-body"></div>
+  </div>
+</div>
+
+<!-- ================= 弹层：附件 ================= -->
+<div id="attach-sheet" class="sheet hidden" role="dialog" aria-modal="true" aria-label="添加附件">
+  <div class="sheet-scrim" data-close="attach-sheet"></div>
+  <div class="sheet-panel compact">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="attach-grid">
+      <button class="attach-item" id="att-camera" type="button">
+        <span class="attach-ico"><svg class="icon"><use href="#i-camera"/></svg></span>
+        <span>拍照</span>
+      </button>
+      <button class="attach-item" id="att-photo" type="button">
+        <span class="attach-ico"><svg class="icon"><use href="#i-image"/></svg></span>
+        <span>相册</span>
+      </button>
+      <button class="attach-item" id="att-file" type="button">
+        <span class="attach-ico"><svg class="icon"><use href="#i-file"/></svg></span>
+        <span>文件</span>
+      </button>
+    </div>
+    <p class="attach-tip">图片需要模型支持识图；文本文件会直接读入当前对话</p>
+  </div>
+</div>
+
+<!-- ================= 弹层：系统提示词 ================= -->
+<div id="system-sheet" class="sheet hidden" role="dialog" aria-modal="true" aria-label="系统提示词">
+  <div class="sheet-scrim" data-close="system-sheet"></div>
+  <div class="sheet-panel">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <span>系统提示词</span>
+      <button class="icon-btn sm" data-close="system-sheet" type="button" aria-label="关闭"><svg class="icon"><use href="#i-close"/></svg></button>
     </div>
     <div class="sheet-body">
-      <button id="btn-new-chat" class="btn primary" type="button">新建对话</button>
-      <div id="chat-list" class="chat-list"></div>
-      <button id="btn-export" class="btn" type="button" style="margin-top:14px">导出当前对话</button>
+      <p class="sheet-tip">只对当前对话生效。留空表示不设置。</p>
+      <textarea id="system-input" placeholder="例如：你是一名严谨的技术编辑，回答先给结论，再给依据。" spellcheck="false"></textarea>
+      <div class="preset-wrap" id="preset-list"></div>
+      <button id="btn-system-save" class="btn btn-primary" type="button">保存</button>
     </div>
   </div>
 </div>
 
-<!-- ============ 设置 ============ -->
-<div id="settings-sheet" class="sheet hidden">
-  <div class="sheet-scrim" data-close="settings-sheet"></div>
-  <div class="sheet-panel">
-    <div class="sheet-head">
-      <span>设置</span>
-      <button class="icon-btn sm" data-close="settings-sheet" type="button">✕</button>
-    </div>
-    <div class="sheet-body">
-      <div class="set-group">
-        <div class="set-title">账号信息</div>
-        <div class="row"><span>账号</span><span id="set-name">—</span></div>
-        <div class="row"><span>手机号</span><span id="set-phone">—</span></div>
-        <div class="row"><span>当前模型</span><span id="set-model">—</span></div>
-        <div class="row"><span>深度思考</span><span id="set-think">关</span></div>
-        <div class="row"><span>剩余积分</span><span id="set-points">—</span></div>
-      </div>
-      <div class="set-group">
-        <div class="set-title">对话</div>
-        <button class="row row-btn" id="row-system" type="button">
-          <span>系统提示词</span><span id="set-system">未设置</span>
-        </button>
-      </div>
-      <div class="set-group">
-        <div class="set-title">连接</div>
-        <div class="row"><span>连接方式</span><span id="set-mode">自动 · 直连官方</span></div>
-        <button class="row row-btn" id="btn-test-conn" type="button">
-          <span>连接状态</span><span id="set-conn">检测中…</span>
-        </button>
-        <button class="row row-btn" id="row-proxy" type="button">
-          <span>代理设置</span><span id="set-proxy" class="mono">未启用</span>
-        </button>
-      </div>
-      <div class="set-group">
-        <div class="set-title">积分</div>
-        <button id="btn-checkin" class="btn" type="button">领取每日积分</button>
-        <button id="btn-onboarding" class="btn" type="button">领取新手奖励</button>
-      </div>
-      <div class="set-group">
-        <button id="btn-logout" class="btn danger" type="button">退出登录</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ============ 连接诊断 ============ -->
-<div id="diag-sheet" class="sheet hidden">
+<!-- ================= 弹层：诊断 ================= -->
+<div id="diag-sheet" class="sheet hidden" role="dialog" aria-modal="true" aria-label="连接诊断">
   <div class="sheet-scrim" data-close="diag-sheet"></div>
   <div class="sheet-panel">
+    <div class="sheet-grip" aria-hidden="true"></div>
     <div class="sheet-head">
       <span>连接诊断</span>
-      <button class="icon-btn sm" data-close="diag-sheet" type="button">✕</button>
+      <button class="icon-btn sm" data-close="diag-sheet" type="button" aria-label="关闭"><svg class="icon"><use href="#i-close"/></svg></button>
     </div>
     <div class="sheet-body">
-      <div class="set-group">
-        <div class="row"><span>连接方式</span><span id="diag-mode">—</span></div>
-        <div class="row"><span>网络</span><span id="diag-net">检测中…</span></div>
-        <div class="row"><span>登录态</span><span id="diag-auth">—</span></div>
-        <div class="row"><span>最近错误</span><span id="diag-err">—</span></div>
-      </div>
-      <div class="set-group">
-        <button id="diag-retest" class="btn" type="button">重新检测</button>
-        <button id="diag-proxy" class="btn" type="button">改用代理</button>
-        <button id="diag-direct" class="btn" type="button">恢复直连</button>
-      </div>
-      <p class="panel-tip">直连模式下由 App 自己完成人机验证和短信登录，手机里不需要再跑任何服务。</p>
+      <div class="kv"><span>通道</span><span id="diag-mode">—</span></div>
+      <div class="kv"><span>网络</span><span id="diag-net">检测中…</span></div>
+      <div class="kv"><span>登录态</span><span id="diag-auth">—</span></div>
+      <div class="kv"><span>最近错误</span><span id="diag-err">—</span></div>
+      <button id="diag-retest" class="btn" type="button">重新检测</button>
+      <button id="diag-proxy" class="btn" type="button">改用代理</button>
+      <button id="diag-direct" class="btn" type="button">恢复直连</button>
+      <p class="sheet-tip">直连模式下由 App 自身完成人机验证与短信登录。</p>
     </div>
   </div>
 </div>
+
+<!-- 隐藏文件输入 -->
+<input id="file-image" type="file" accept="image/*" class="hidden-input" aria-hidden="true">
+<input id="file-camera" type="file" accept="image/*" capture="environment" class="hidden-input" aria-hidden="true">
+<input id="file-doc" type="file" accept=".txt,.md,.csv,.json,.log,.yml,.yaml,.toml,.xml,.html,.css,.js,.ts,.py,.java,.c,.h,.cpp,.go,.rs,.sql,.sh,text/*,application/json" class="hidden-input" aria-hidden="true">
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 

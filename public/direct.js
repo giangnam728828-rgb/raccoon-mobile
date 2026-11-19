@@ -885,6 +885,8 @@
         handlers.onDelta({ error: frame.error.message || '官方返回错误' });
         return;
       }
+      // 用量统计（stream_options.include_usage 已在 prepareBody 打开）
+      if (frame.usage && handlers.onUsage) handlers.onUsage(frame.usage);
       var choice = frame.choices && frame.choices[0];
       if (!choice) return;
       var delta = choice.delta || choice.message || {};

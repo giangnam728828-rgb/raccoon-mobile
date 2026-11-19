@@ -1,6 +1,6 @@
 {
   "name": "raccoon-mobile",
-  "version": "1.5.0",
+  "version": "2.0.0",
   "description": "商汤小浣熊移动端客户端（手机号登录 + 多模型 + 深度思考）",
   "private": true,
   "type": "commonjs",
