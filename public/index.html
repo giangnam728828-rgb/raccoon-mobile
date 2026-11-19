@@ -30,47 +30,46 @@
       <p class="brand-sub">多模型 · 深度思考 · 手机端</p>
     </div>
 
+    <!-- 手机号验证码登录 -->
     <div class="login-actions">
-      <button id="btn-qr" class="btn primary">
-        <svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9V5a2 2 0 0 1 2-2h4M21 9V5a2 2 0 0 0-2-2h-4M3 15v4a2 2 0 0 0 2 2h4M21 15v4a2 2 0 0 1-2 2h-4"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>
-        微信扫码登录
-      </button>
-      <button id="btn-code" class="btn">使用授权码</button>
-      <button id="btn-token" class="btn ghost">粘贴 Token</button>
+      <label class="field-label" for="phone">手机号</label>
+      <div class="field-row">
+        <select id="nation" class="nation-select" aria-label="国家/地区代码"></select>
+        <input id="phone" class="field-input" type="tel" inputmode="numeric" autocomplete="tel"
+               placeholder="请输入手机号" maxlength="20">
+      </div>
+
+      <label class="field-label" for="code">短信验证码</label>
+      <div class="field-row">
+        <input id="code" class="field-input" type="text" inputmode="numeric" autocomplete="one-time-code"
+               placeholder="6 位验证码" maxlength="8">
+        <button id="btn-send-code" class="btn-code" type="button">获取验证码</button>
+      </div>
+
+      <button id="btn-login" class="btn primary" type="button">登录 / 注册</button>
+      <p class="login-hint">未注册的手机号将自动创建账号</p>
     </div>
 
-    <div id="qr-panel" class="panel hidden">
-      <div class="panel-head">
-        <span>微信扫码</span>
-        <button class="icon-btn sm" data-back="qr">✕</button>
-      </div>
-      <p class="panel-tip">用微信扫描下方二维码，完成登录</p>
-      <div class="qr-frame"><img id="qr-img" alt="登录二维码"></div>
-      <p id="qr-status" class="panel-tip status">等待扫码…</p>
-      <button id="btn-qr-refresh" class="btn small">刷新二维码</button>
-    </div>
-
-    <div id="code-panel" class="panel hidden">
-      <div class="panel-head">
-        <span>授权码登录</span>
-        <button class="icon-btn sm" data-back="code">✕</button>
-      </div>
-      <textarea id="code-input" placeholder="粘贴授权码，或含 code= 的完整回调地址"></textarea>
-      <button id="btn-code-go" class="btn primary">兑换登录</button>
+    <div class="login-alt">
+      <button id="btn-token-toggle" class="link-btn" type="button">使用 Token 登录</button>
     </div>
 
     <div id="token-panel" class="panel hidden">
       <div class="panel-head">
         <span>Token 登录</span>
-        <button class="icon-btn sm" data-back="token">✕</button>
+        <button class="icon-btn sm" data-back="token" type="button" aria-label="关闭">✕</button>
       </div>
-      <textarea id="token-input" placeholder="粘贴 access_token（JWT）"></textarea>
-      <button id="btn-token-go" class="btn primary">登录</button>
+      <textarea id="token-input" placeholder="粘贴 access_token（JWT，可带 Bearer 前缀）" spellcheck="false"></textarea>
+      <button id="btn-token-go" class="btn primary" type="button">登录</button>
     </div>
 
-    <p id="login-msg" class="login-msg hidden"></p>
-    <p class="login-foot">登录态仅保存在本机</p>
+    <p id="login-msg" class="login-msg hidden" role="alert"></p>
+    <p class="login-foot">登录态只保存在代理服务本机</p>
   </div>
+
+  <!-- 阿里云人机验证的挂载点（SDK 会把验证码渲染在这里） -->
+  <div id="cap-element"></div>
+  <button id="cap-button" type="button" hidden>captcha</button>
 </section>
 
 <!-- ============ 聊天 ============ -->
@@ -82,17 +81,17 @@
     </div>
     <div class="top-right">
       <span class="points" id="points-badge">积分</span>
-      <button id="btn-models" class="icon-btn" title="选择模型">
+      <button id="btn-models" class="icon-btn" title="选择模型" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
       </button>
-      <button id="btn-settings" class="icon-btn" title="设置">
+      <button id="btn-settings" class="icon-btn" title="设置" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
     </div>
   </header>
 
   <div class="model-bar">
-    <button id="model-name" class="model-pill">
+    <button id="model-name" class="model-pill" type="button">
       <span class="model-pill-label">模型</span>
       <span class="model-pill-val" id="model-name-val">默认</span>
       <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
@@ -104,33 +103,18 @@
     </label>
   </div>
 
-  <main id="messages" class="messages">
-    <div id="empty-state" class="empty-state">
-      <div class="empty-mark">
-        <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
-          <circle cx="24" cy="24" r="22" fill="#1c2433" stroke="#2a3548" stroke-width="1.5"/>
-          <path d="M16 20c0-3 2-5 5-5s4 2 4 4-1 4-4 4-5-1-5-3z" fill="#f59e0b"/>
-          <path d="M24 20c0-3 2-5 5-5s4 2 4 4-1 4-4 4-5-1-5-3z" fill="#fbbf24"/>
-          <circle cx="19" cy="26" r="1.8" fill="#0b0f17"/>
-          <circle cx="29" cy="26" r="1.8" fill="#0b0f17"/>
-          <path d="M20 31c2 2 6 2 8 0" stroke="#0b0f17" stroke-width="1.6" stroke-linecap="round"/>
-        </svg>
-      </div>
-      <h2>开始对话</h2>
-      <p class="empty-sub">选择模型、开启深度思考，直接提问</p>
-      <div class="suggest" id="suggest"></div>
-    </div>
-  </main>
+  <main id="messages" class="messages"></main>
 
   <footer class="composer">
-    <button id="btn-voice" class="icon-btn" title="语音输入">
+    <button id="btn-voice" class="icon-btn" title="语音输入" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></svg>
     </button>
     <div class="input-wrap">
       <textarea id="input" rows="1" placeholder="输入消息，或点麦克风说话…"></textarea>
     </div>
-    <button id="btn-send" class="send-btn" disabled>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4 20-7z"/></svg>
+    <button id="btn-send" class="send-btn" type="button" disabled aria-label="发送">
+      <svg class="ico-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4 20-7z"/></svg>
+      <svg class="ico-stop hidden" viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>
     </button>
   </footer>
 </section>
@@ -141,7 +125,7 @@
   <div class="sheet-panel">
     <div class="sheet-head">
       <span>选择模型</span>
-      <button class="icon-btn sm" data-close="model-sheet">✕</button>
+      <button class="icon-btn sm" data-close="model-sheet" type="button">✕</button>
     </div>
     <div id="model-list" class="sheet-body"></div>
   </div>
@@ -153,25 +137,28 @@
   <div class="sheet-panel">
     <div class="sheet-head">
       <span>设置</span>
-      <button class="icon-btn sm" data-close="settings-sheet">✕</button>
+      <button class="icon-btn sm" data-close="settings-sheet" type="button">✕</button>
     </div>
     <div class="sheet-body">
       <div class="set-group">
-        <div class="row"><span>账号</span><span id="set-uid">—</span></div>
+        <div class="row"><span>账号</span><span id="set-name">—</span></div>
+        <div class="row"><span>手机号</span><span id="set-phone">—</span></div>
         <div class="row"><span>当前模型</span><span id="set-model">—</span></div>
         <div class="row"><span>深度思考</span><span id="set-think">关</span></div>
         <div class="row"><span>剩余积分</span><span id="set-points">—</span></div>
       </div>
       <div class="set-group">
-        <button id="btn-checkin" class="btn">领取每日积分</button>
-        <button id="btn-onboarding" class="btn">领取新手奖励</button>
+        <button id="btn-checkin" class="btn" type="button">领取每日积分</button>
+        <button id="btn-onboarding" class="btn" type="button">领取新手奖励</button>
       </div>
       <div class="set-group">
-        <button id="btn-logout" class="btn danger">退出登录</button>
+        <button id="btn-logout" class="btn danger" type="button">退出登录</button>
       </div>
     </div>
   </div>
 </div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="/app.js"></script>
 </body>

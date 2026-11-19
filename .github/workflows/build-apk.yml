@@ -7,9 +7,13 @@ on:
   workflow_dispatch:
     inputs:
       proxy_url:
-        description: '代理服务地址（APK 内 WebView 调用）'
-        required: false
+        description: '代理服务地址（APK 内 WebView 调用，例如 https://raccoon.example.com）'
+        required: true
         default: 'http://127.0.0.1:8799'
+      access_key:
+        description: '代理访问密钥（服务端设了 ACCESS_KEY 才需要填）'
+        required: false
+        default: ''
 
 jobs:
   build-apk:
@@ -30,6 +34,12 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: 安装依赖
+        run: npm ci --no-audit --no-fund
+
+      - name: 跑冒烟测试
+        run: npm test
+
       - name: 配置 Android SDK
         env:
           ANDROID_HOME: ${{ github.workspace }}/android-sdk
@@ -45,18 +55,36 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-34" "build-tools;34.0.0" > /dev/null
 
-      - name: 安装依赖
-        run: npm install
-
-      - name: 写入代理地址
+      - name: 写入代理地址与访问密钥
         env:
           PROXY_URL: ${{ github.event.inputs.proxy_url || 'http://127.0.0.1:8799' }}
+          ACCESS_KEY: ${{ github.event.inputs.access_key || '' }}
         run: |
-          sed -i "s|const API_BASE = '';|const API_BASE = '${PROXY_URL}';|" public/app.js
-          grep -n "API_BASE =" public/app.js
+          node -e '
+            const fs = require("fs");
+            const p = "public/app.js";
+            let s = fs.readFileSync(p, "utf8");
+            s = s.replace(/const API_BASE = \x27\x27;/, "const API_BASE = \x27" + process.env.PROXY_URL + "\x27;");
+            s = s.replace(/const ACCESS_KEY = \x27\x27;/, "const ACCESS_KEY = \x27" + (process.env.ACCESS_KEY || "") + "\x27;");
+            fs.writeFileSync(p, s);
+          '
+          grep -n "const API_BASE" public/app.js
+          grep -n "const ACCESS_KEY" public/app.js
+          case "$PROXY_URL" in
+            http://127.0.0.1*|http://localhost*)
+              echo "::warning::代理地址是 127.0.0.1，只有手机上自己在跑 server.js 时才能用" ;;
+          esac
 
       - name: 生成 Android 工程
         run: npx cap add android
+
+      - name: 允许明文 HTTP（本地代理默认没有证书）
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          if ! grep -q 'usesCleartextTraffic' "$M"; then
+            sed -i '0,/<application/s|<application|<application android:usesCleartextTraffic="true"|' "$M"
+          fi
+          grep -n 'usesCleartextTraffic' "$M"
 
       - name: 同步 Web 资源
         run: npx cap copy android

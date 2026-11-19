@@ -101,12 +101,50 @@ html, body {
 .panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-weight: 600; font-size: 14.5px; }
 .panel-tip { color: var(--text-2); font-size: 13.5px; margin: 8px 0; }
 .panel-tip.status { text-align: center; color: var(--accent-2); }
-.qr-frame {
-  display: flex; justify-content: center; background: #fff;
-  border-radius: var(--radius); padding: 12px; margin: 14px 0;
-  box-shadow: inset 0 0 0 1px var(--line);
+/* 登录表单 */
+.field-label {
+  display: block; color: var(--text-2); font-size: 12.5px;
+  margin: 0 0 6px 4px; letter-spacing: .3px;
 }
-.qr-frame img { width: 210px; height: 210px; display: block; }
+.field-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.field-input {
+  flex: 1; min-width: 0; padding: 13px 14px;
+  background: var(--surface-2); border: 1px solid var(--line-2);
+  border-radius: 13px; color: var(--text); font-size: 15px;
+  font-family: inherit; outline: none; transition: border-color .15s;
+}
+.field-input::placeholder { color: var(--text-3); }
+.field-input:focus { border-color: var(--accent-line); }
+.nation-select {
+  flex: none; width: 118px; padding: 13px 8px 13px 12px;
+  background: var(--surface-2); border: 1px solid var(--line-2);
+  border-radius: 13px; color: var(--text); font-size: 13.5px;
+  font-family: inherit; outline: none; appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-3) 50%), linear-gradient(135deg, var(--text-3) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 50%, calc(100% - 10px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+.nation-select:focus { border-color: var(--accent-line); }
+.btn-code {
+  flex: none; min-width: 104px; padding: 0 14px;
+  border-radius: 13px; border: 1px solid var(--accent-line);
+  background: var(--accent-soft); color: var(--accent-2);
+  font-size: 13.5px; font-weight: 600; font-family: inherit;
+  cursor: pointer; transition: opacity .15s, transform .08s;
+  font-variant-numeric: tabular-nums;
+}
+.btn-code:active { transform: scale(.97); }
+.btn-code:disabled { opacity: .55; cursor: default; }
+.login-hint { text-align: center; color: var(--text-3); font-size: 12px; margin: 4px 0 0; }
+.login-alt { text-align: center; margin-top: 18px; }
+.link-btn {
+  background: none; border: none; color: var(--text-2);
+  font-size: 13px; font-family: inherit; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px;
+  padding: 6px 10px;
+}
+.link-btn:active { color: var(--accent-2); }
 textarea {
   width: 100%; min-height: 84px; resize: vertical;
   background: var(--surface-2); border: 1px solid var(--line-2);
@@ -118,6 +156,8 @@ textarea:focus { outline: none; border-color: var(--accent-line); }
 .login-foot { text-align: center; color: var(--text-3); font-size: 11.5px; margin: 18px 0 0; }
 
 /* ---------- 顶栏 ---------- */
+/* 聊天页是纵向三段式：顶栏 / 模型栏 / 消息区 / 输入区，缺了这行整页会横着排 */
+#chat-view { flex-direction: column; }
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 16px; padding-top: calc(12px + env(safe-area-inset-top));
@@ -256,6 +296,21 @@ textarea:focus { outline: none; border-color: var(--accent-line); }
 .send-btn svg { width: 20px; height: 20px; }
 .send-btn:active { transform: scale(.92); }
 .send-btn:disabled { opacity: .35; cursor: not-allowed; }
+.send-btn.streaming { background: var(--surface-3); color: var(--text); border: 1px solid var(--line-2); }
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%);
+  max-width: 84vw; padding: 10px 18px; border-radius: 12px;
+  background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--line-2); font-size: 13.5px;
+  box-shadow: var(--shadow); z-index: 99; pointer-events: none;
+  opacity: 0; transition: opacity .2s var(--ease);
+}
+.toast.show { opacity: 1; }
+
+/* 人机验证容器：SDK 在 popup 模式下自己定位，这里只保证它不会撑开布局 */
+#cap-element { width: 100%; height: 0; overflow: visible; }
 
 /* ---------- 底部弹层 ---------- */
 .sheet { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
