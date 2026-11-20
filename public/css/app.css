@@ -91,8 +91,19 @@ body::after {
 .topbar-title{display:flex;align-items:center;gap:var(--s-2);min-width:0;flex:1}
 .topbar-title .t{font:var(--style-h3);letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .topbar-menu{flex:none;width:34px;height:34px;display:flex;align-items:center;justify-content:center;border:0;border-radius:var(--r-sm);background:var(--c-glass);color:var(--icon-secondary);cursor:pointer}
-/* 隐藏无效的模型选择器（v8） */
-.modelbar, .chip.model, #btn-model, #model-name { display:none!important }
+/* v8 思考按钮样式 */
+.think-badge{display:inline-flex;align-items:center;gap:5px;height:36px;padding:0 14px;border:0;border-radius:999px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);font:600 13px/1 var(--font);cursor:pointer;transition:all var(--t-fast) ease;box-shadow:var(--shadow-glow)}
+.think-badge:hover{transform:scale(1.05)}
+.think-badge:active{transform:scale(0.96)}
+.think-badge .i{width:16px;height:16px;animation:thinkPulse 2s ease-in-out infinite}
+@keyframes thinkPulse{0%,100%{opacity:1;transform:rotate(0deg)}50%{opacity:0.7;transform:rotate(180deg)}}
+.think-badge.on{box-shadow:0 0 0 3px var(--accent-dim),var(--shadow-glow)}
+
+/* 模型选择器 - 必须恢复（桌面端核心功能） */
+.modelbar{display:flex;align-items:center;gap:var(--s-2);padding:0 var(--gutter) var(--s-2)}
+.chip.model,.chip.model .lbl{font-weight:600;color:var(--text-primary)}
+.chip.model.on{background:var(--accent-dim);color:var(--accent);border-color:var(--accent-line);box-shadow:var(--shadow-glow)}
+#btn-model svg{width:14px;height:14px;margin-right:4px}
 .status-dot{width:7px;height:7px;flex:none;border-radius:50%;background:var(--icon-muted);box-shadow:0 0 0 3px var(--c-canvas)}
 .status-dot.connected{background:var(--ok);box-shadow:0 0 0 3px var(--c-canvas),0 0 0 5px var(--ok-dim),0 0 10px var(--ok)}
 .status-dot.connecting{animation:pulse 1.5s ease-in-out infinite}
@@ -149,11 +160,20 @@ body::after {
 
 /* ---------- 空态 ---------- */
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;margin:auto 0;padding:var(--s-8) var(--s-6);text-align:center}
-.empty-art{width:82px;height:82px;border-radius:var(--r-lg);overflow:hidden;margin-bottom:var(--s-5);position:relative}
-.empty-art::before{content:"";position:absolute;inset:-10px;border-radius:26px;background:conic-gradient(from 0deg,var(--accent),var(--accent-2),var(--accent));filter:blur(16px);opacity:.5;animation:spinSlow 6s linear infinite}
-.empty-art img{width:100%;height:100%;object-fit:cover;position:relative;z-index:1;border-radius:var(--r-lg)}
-.empty h2{margin:0 0 var(--s-2);font:var(--style-h2);background:linear-gradient(100deg,var(--c-ink),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+.empty-art{width:140px;height:140px;border-radius:24px;overflow:hidden;margin-bottom:var(--s-5);position:relative;box-shadow:var(--v8-shadow-soft)}
+.empty-art::before{content:"";position:absolute;inset:-10px;border-radius:30px;background:conic-gradient(from 0deg,var(--accent),var(--accent-2),var(--accent));filter:blur(20px);opacity:.5;animation:spinSlow 6s linear infinite}
+.empty-art img{width:100%;height:100%;object-fit:cover;position:relative;z-index:1;border-radius:24px}
+.empty h2{margin:0 0 var(--s-2);font:600 24px/1 var(--font);background:linear-gradient(100deg,var(--c-ink),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
 .empty p{margin:0 0 var(--s-6);font:var(--style-body);color:var(--text-muted);max-width:280px}
+
+/* v9: 优化的空态快速操作 */
+.quick-list{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--s-3);max-width:400px;width:100%}
+.quick-item{display:flex;align-items:center;gap:var(--s-2);padding:var(--s-3) var(--s-4);background:var(--v8-glass-bg);border:1px solid var(--v8-glass-border);border-radius:var(--r-lg);color:var(--text-secondary);font:var(--style-body);cursor:pointer;transition:all var(--t-fast) ease}
+.quick-item:hover{background:var(--v8-glass-highlight);transform:translateY(-2px);box-shadow:var(--v8-shadow-soft)}
+.quick-item:active{transform:translateY(0)}
+.quick-item .i{width:18px;height:18px;color:var(--accent)}
+.quick-item .tx{font-weight:600}
+.quick-item .hint{font-size:12px;color:var(--text-faint)}
 .quick-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--s-3);width:100%;max-width:340px}
 .quick-card{display:flex;flex-direction:column;align-items:center;padding:var(--s-5) var(--s-3);border:1px solid var(--c-line);border-radius:var(--r-lg);background:var(--c-glass);backdrop-filter:blur(10px);text-align:center;cursor:pointer;transition:var(--transition-card)}
 .quick-card:hover{border-color:var(--accent-line);background:var(--c-glass-strong);transform:translateY(-2px);box-shadow:var(--shadow-glow)}
@@ -164,8 +184,8 @@ body::after {
 
 /* ---------- 输入区：单层玻璃容器（消除框中框） ---------- */
 .composer{flex:none;padding:var(--s-2) var(--gutter) var(--s-2);position:relative}
-.composer-inner{border-radius:24px;background:var(--v8-glass-bg,var(--c-glass));backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border:1px solid var(--v8-glass-border,var(--c-line));transition:all var(--t-mid) var(--ease);padding:2px}
-.composer-inner:focus-within{transform:translateY(-2px);box-shadow:var(--v8-shadow-float,var(--shadow-md));border-color:var(--v8-glass-highlight,var(--c-line-2))}
+.composer-inner{border-radius:24px;background:var(--v8-glass-bg,var(--c-glass));backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border:none;transition:all var(--t-mid) var(--ease);padding:2px}
+.composer-inner:focus-within{transform:translateY(-2px);box-shadow:var(--v8-shadow-float,var(--shadow-md))}
 .composer-top{display:flex;align-items:flex-end;gap:var(--s-2);padding:var(--s-3) var(--s-3) var(--s-1)}
 #input{flex:1;min-width:0;min-height:28px;max-height:140px;padding:4px 2px;border:0;background:transparent;outline:none;resize:none;color:var(--text-primary);font:var(--reading-size)/1.5 var(--font);overflow-y:auto;-webkit-overflow-scrolling:touch}
 #input::placeholder{color:var(--text-faint)}

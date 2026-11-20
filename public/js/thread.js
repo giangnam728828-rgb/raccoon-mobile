@@ -255,6 +255,13 @@
     if (!box) return;
     box.innerHTML = '';
 
+    // v9 修复：空对话始终显示空态（不管是不是新建的）
+    // 保险：如果当前 chatId 对应的对话确实没有消息，就强制同步为空
+    const cur = RC.currentChat && RC.currentChat();
+    if (cur && Array.isArray(cur.messages) && cur.messages.length === 0 && S.messages.length) {
+      S.messages = [];
+    }
+
     if (!S.messages.length) {
       box.appendChild(buildEmpty());
       updateJump();
@@ -283,8 +290,9 @@
     art.appendChild(img);
     wrap.appendChild(art);
 
-    wrap.appendChild(el('h2', null, '开始对话'));
-    wrap.appendChild(el('p', null, '提问、拍照，或丢一份文件进来'));
+    // v9: 优化的空态文案
+    wrap.appendChild(el('h2', 'empty-title', '开始对话'));
+    wrap.appendChild(el('p', 'empty-subtitle', '提问、拍照，或丢一份文件进来'));
 
     const quick = [
       { ico: 'pen', title: '写点什么', hint: '文案 / 邮件 / 总结', text: '帮我写' },

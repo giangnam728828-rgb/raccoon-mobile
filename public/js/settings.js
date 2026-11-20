@@ -286,7 +286,7 @@
         // 左侧图标和标签
         const labelWrap = el('div', 'setting-label-modern');
         const iconEl = icon(it.icon);
-        iconEl.className = 'setting-icon-modern';
+        iconEl.setAttribute('class', 'setting-icon-modern');
         labelWrap.appendChild(iconEl);
         const lbl = el('span', '', it.label);
         lbl.style.fontWeight = '600';
@@ -299,7 +299,7 @@
           const customRow = el('div', 'setting-row-modern');
           const cw = el('div', 'setting-label-modern');
           const ci = icon(it.icon);
-          ci.className = 'setting-icon-modern';
+          ci.setAttribute('class', 'setting-icon-modern');
           cw.appendChild(ci);
           const cl = el('span', '', it.label);
           cl.style.fontWeight = '600';
