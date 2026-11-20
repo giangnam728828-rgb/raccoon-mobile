@@ -93,7 +93,7 @@ public class RaccoonFilePlugin extends Plugin {
         List<JSObject> others = new ArrayList<>();
         for (int i = 0; i < result.length(); i++) {
             try {
-                JSObject o = result.getJSONObject(i);
+                JSObject o = result.get(i);
                 if (o.optBoolean("isDir")) dirs.add(o);
                 else others.add(o);
             } catch (Exception ignored) {}
