@@ -74,36 +74,37 @@ public class RaccoonFilePlugin extends Plugin {
             return;
         }
 
-        JSArray result = new JSArray();
+        org.json.JSONArray result = new org.json.JSONArray();
         File[] files = dir.listFiles();
         if (files != null) {
             for (File f : files) {
-                JSObject entry = new JSObject();
-                entry.put("name", f.getName());
-                entry.put("isDir", f.isDirectory());
-                entry.put("size", f.isDirectory() ? 0 : f.length());
-                entry.put("modified", f.lastModified());
-                entry.put("path", relativePath(f));
-                result.put(entry);
+                org.json.JSONObject entry = new org.json.JSONObject();
+                try {
+                    entry.put("name", f.getName());
+                    entry.put("isDir", f.isDirectory());
+                    entry.put("size", f.isDirectory() ? 0 : f.length());
+                    entry.put("modified", f.lastModified());
+                    entry.put("path", relativePath(f));
+                    result.put(entry);
+                } catch (org.json.JSONException ignored) {}
             }
         }
 
         // 排序：目录优先，其次按名称
-        List<JSObject> dirs = new ArrayList<>();
-        List<JSObject> others = new ArrayList<>();
+        List<org.json.JSONObject> dirs = new ArrayList<>();
+        List<org.json.JSONObject> others = new ArrayList<>();
         for (int i = 0; i < result.length(); i++) {
-            try {
-                JSObject o = result.get(i);
-                if (o.optBoolean("isDir")) dirs.add(o);
-                else others.add(o);
-            } catch (Exception ignored) {}
+            org.json.JSONObject o = result.optJSONObject(i);
+            if (o == null) continue;
+            if (o.optBoolean("isDir")) dirs.add(o);
+            else others.add(o);
         }
         dirs.sort((a, b) -> a.optString("name").compareTo(b.optString("name")));
         others.sort((a, b) -> a.optString("name").compareTo(b.optString("name")));
 
         JSArray sorted = new JSArray();
-        for (JSObject o : dirs) sorted.put(o);
-        for (JSObject o : others) sorted.put(o);
+        for (org.json.JSONObject o : dirs) sorted.put(o);
+        for (org.json.JSONObject o : others) sorted.put(o);
 
         JSObject ret = new JSObject();
         ret.put("ok", true);
