@@ -1,52 +1,37 @@
 /* ============================================================
-   小浣熊 v8 · 材质革命版
-   设计语言：iOS 17 + Material You 融合
-   - 设置页：卡片分组 + 毛玻璃 + 动态色环
-   - 输入框：无边框悬浮胶囊
-   - 聊天区：现代对话气泡 + 动态背景元素
+   小浣熊 v10 · 液态玻璃材质革命
+   设计语言：Liquid Glass + Flowing Light
+   - 输入框：完全无框液态玻璃，底部流动光带随输入变化
+   - 思考按钮：呼吸光效整合进输入区
+   - 设置页：卡片分组 + 动态色环 + iOS 风格开关
+   - 返回逻辑：修复返回键功能
    ============================================================ */
 
 :root {
-  --v8-card-radius: 20px;
-  --v8-glass-bg: rgba(255, 255, 255, 0.08);
-  --v8-glass-border: rgba(255, 255, 255, 0.12);
-  --v8-glass-highlight: rgba(255, 255, 255, 0.18);
-  --v8-shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.12);
-  --v8-shadow-float: 0 12px 48px rgba(0, 0, 0, 0.18);
+  --lg-radius: 24px;
+  --lg-bg: rgba(255, 255, 255, 0.03);
+  --lg-border: rgba(255, 255, 255, 0.06);
+  --lg-highlight: rgba(255, 255, 255, 0.1);
+  --lg-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  --flow-speed: 3s;
 }
 
 [data-theme="light"] {
-  --v8-card-radius: 18px;
-  --v8-glass-bg: rgba(0, 0, 0, 0.04);
-  --v8-glass-border: rgba(0, 0, 0, 0.06);
-  --v8-glass-highlight: rgba(0, 0, 0, 0.08);
-  --v8-shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.06);
-  --v8-shadow-float: 0 12px 48px rgba(0, 0, 0, 0.08);
+  --lg-radius: 20px;
+  --lg-bg: rgba(0, 0, 0, 0.02);
+  --lg-border: rgba(0, 0, 0, 0.04);
+  --lg-highlight: rgba(0, 0, 0, 0.06);
+  --lg-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
 }
 
-/* ---------- 流动光晕背景（全局动态材质） ---------- */
-body::before,
-body::after {
-  content:"";position:fixed;z-index:0;pointer-events:none;border-radius:50%;
-  filter:blur(80px);opacity:.5;
+/* ---------- 极简背景（移除过度光晕）---------- */
+body {
+  background: var(--c-canvas);
+  transition: background var(--t-slow);
 }
-body::before {
-  width:70vw;height:70vw;top:-28vw;right:-24vw;
-  background:radial-gradient(circle at 40% 40%,rgba(var(--accent-rgb),.38),transparent 68%);
-  animation:auroraFloat 18s var(--ease) infinite alternate;
-}
-body::after {
-  width:60vw;height:60vw;bottom:-28vw;left:-22vw;
-  background:radial-gradient(circle at 50% 50%,rgba(var(--accent-2-rgb),.26),transparent 68%);
-  animation:auroraFloat 24s var(--ease) infinite alternate-reverse;
-}
-@keyframes auroraFloat {
-  0%{transform:translate3d(0,0,0) scale(1)}
-  100%{transform:translate3d(6vw,5vh,0) scale(1.16)}
-}
-[data-fx="off"] body::before,[data-fx="off"] body::after {display:none}
+body::before, body::after { display: none; } /* 移除 aurora 光晕 */
 
-/* 保证内容在光晕之上 */
+/* 保证内容层级 */
 #boot,#app,#login,.sheet,.confirm-dialog,.lightbox,#toast{position:fixed;z-index:1}
 
 /* ---------- 启动动画 ---------- */
@@ -182,45 +167,140 @@ body::after {
 .quick-card .label{font:var(--style-body-strong)}
 .quick-card .hint{margin-top:2px;font:var(--style-caption-2);color:var(--text-muted)}
 
-/* ---------- 输入区：单层玻璃容器（消除框中框） ---------- */
-.composer{flex:none;padding:var(--s-2) var(--gutter) var(--s-2);position:relative}
-.composer-inner{border-radius:24px;background:var(--v8-glass-bg,var(--c-glass));backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border:none;transition:all var(--t-mid) var(--ease);padding:2px}
-.composer-inner:focus-within{transform:translateY(-2px);box-shadow:var(--v8-shadow-float,var(--shadow-md))}
-.composer-top{display:flex;align-items:flex-end;gap:var(--s-2);padding:var(--s-3) var(--s-3) var(--s-1)}
-#input{flex:1;min-width:0;min-height:28px;max-height:140px;padding:4px 2px;border:0;background:transparent;outline:none;resize:none;color:var(--text-primary);font:var(--reading-size)/1.5 var(--font);overflow-y:auto;-webkit-overflow-scrolling:touch}
-#input::placeholder{color:var(--text-faint)}
-.send-btn{flex:none;width:42px;height:42px;display:flex;align-items:center;justify-content:center;border:0;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);cursor:pointer;transition:var(--t-colors),transform var(--t-fast),box-shadow var(--t-fast);position:relative;overflow:hidden}
-.send-btn::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.28) 50%,transparent 70%);transform:translateX(-120%);transition:transform var(--t-slow) var(--ease)}
-.send-btn:hover::after{transform:translateX(120%)}
-.send-btn:active{transform:scale(.92)}
-.send-btn:disabled{background:var(--c-panel-3);color:var(--icon-muted);box-shadow:none}
-.send-btn:disabled::after{display:none}
-.send-btn.streaming{background:linear-gradient(135deg,var(--danger),#fb923c)}
-.send-btn .ico-stop{display:none}
-.send-btn.streaming .ico-stop{display:block}
-.send-btn.streaming .ico-send{display:none}
-.composer-tools{display:flex;align-items:center;gap:var(--s-2);padding:0 var(--s-3) var(--s-3)}
-.composer-tools .icon-btn{width:34px;height:34px}
-.composer-tools .spacer{flex:1}
+/* ---------- 输入区：液态玻璃材质（完全无框）---------- */
+.composer {
+  flex: none;
+  padding: var(--s-3) var(--gutter) var(--s-3);
+  position: relative;
+}
 
-/* v8 思考按钮样式 */
-.think-badge{display:inline-flex;align-items:center;gap:5px;height:36px;padding:0 14px;border:0;border-radius:999px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--on-accent);font:600 13px/1 var(--font);cursor:pointer;transition:all var(--t-fast) ease;box-shadow:var(--shadow-glow)}
-.think-badge:hover{transform:scale(1.05)}
-.think-badge:active{transform:scale(0.96)}
-.think-badge .i{width:16px;height:16px;animation:thinkPulse 2s ease-in-out infinite}
-@keyframes thinkPulse{0%,100%{opacity:1;transform:rotate(0deg)}50%{opacity:0.7;transform:rotate(180deg)}}
-.think-badge.on{box-shadow:0 0 0 3px var(--accent-dim),var(--shadow-glow)}
-.composer-hint{font:var(--style-caption-2);color:var(--text-faint)}
-.composer-hint span{color:var(--accent)}
-.think-badge{display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 12px;border:0;border-radius:999px;background:var(--c-glass-strong);color:var(--text-secondary);font:var(--style-btn-sm);cursor:pointer;transition:var(--t-colors),box-shadow var(--t-fast)}
-.think-badge .i{width:14px;height:14px;color:var(--icon-accent)}
-.think-badge.on{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-line);box-shadow:var(--shadow-glow)}
-.draft-att{display:flex;gap:var(--s-2);padding:var(--s-2) var(--s-3) 0;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.draft-chip{position:relative;flex:none;display:flex;align-items:center;gap:var(--s-2);min-width:120px;max-width:200px;height:40px;padding:0 var(--s-4) 0 var(--s-2);border-radius:var(--r-full);background:var(--c-panel-3)}
-.draft-chip img{width:28px;height:28px;border-radius:var(--r-xs);object-fit:cover}
-.draft-chip .nm{font:var(--style-caption-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-secondary)}
-.draft-chip .remove{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:20px;height:20px;border:0;border-radius:50%;background:var(--c-panel-solid);color:var(--icon-muted);cursor:pointer}
-.draft-chip .remove .i{width:11px;height:11px}
+/* 液态玻璃容器 - 完全无框，只有流动光带 */
+.composer-inner {
+  border-radius: var(--lg-radius);
+  background: var(--lg-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: none; /* 完全移除边框 */
+  padding: 16px;
+  transition: all var(--t-mid) var(--ease);
+  position: relative;
+  overflow: hidden;
+}
+
+/* 流动光带 - 底部动态效果 */
+.composer-inner::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--accent));
+  background-size: 200% 100%;
+  animation: flowLight var(--flow-speed) ease-in-out infinite;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+@keyframes flowLight {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* focus 时增强光带 */
+.composer-inner:focus-within {
+  transform: translateY(-2px);
+  box-shadow: var(--lg-shadow);
+}
+
+.composer-inner:focus-within::before {
+  opacity: 1;
+  height: 4px;
+}
+
+.composer-top {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s-2);
+  position: relative;
+  z-index: 1;
+}
+
+#input {
+  flex: 1;
+  min-width: 0;
+  min-height: 28px;
+  max-height: 140px;
+  padding: 4px 2px;
+  border: 0;
+  background: transparent;
+  outline: none;
+  resize: none;
+  color: var(--text-primary);
+  font: var(--reading-size)/1.5 var(--font);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#input::placeholder {
+  color: var(--text-faint);
+}
+
+/* 思考按钮 - 整合进输入区，呼吸光效 */
+.think-badge {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--lg-bg);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--t-fast) ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.think-badge .i {
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+  transition: transform var(--t-slow) ease;
+}
+
+.think-badge:hover {
+  background: var(--lg-highlight);
+  transform: scale(1.05);
+}
+
+.think-badge:active {
+  transform: scale(0.95);
+}
+
+/* 呼吸光效 */
+.think-badge.on::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.4;
+  animation: thinkPulse 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes thinkPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.1;
+  }
+}
 
 /* ---------- 搜索 ---------- */
 .pane-search{padding:0 var(--gutter) var(--s-3)}

@@ -193,8 +193,25 @@
     if (RC.closeTopSheet && RC.closeTopSheet()) return true;
     const login = $('login');
     if (login && login.classList.contains('on')) { hideLogin(); return true; }
-    if (S.tab !== 'chat') { setTab('chat'); return true; }
-    return false;
+    
+    // v10: 聊天页返回逻辑优化
+    if (S.tab === 'chat') {
+      // 如果当前对话有历史，返回上一对话
+      const chats = state.chats || [];
+      const curId = state.chatId;
+      const curIdx = chats.findIndex(c => c.id === curId);
+      if (curIdx > 0) {
+        // 切换到上一个对话
+        RC.switchChat(chats[curIdx - 1].id);
+        return true;
+      }
+      // 如果是第一个对话或空对话，允许退出
+      return false;
+    }
+    
+    // 非聊天页，切回聊天
+    setTab('chat');
+    return true;
   }
 
   Object.assign(RC, {
