@@ -1,57 +1,61 @@
 /* ============================================================
-   小浣熊 v6 · CANVAS 设计系统
-   全新深色工具型界面：近黑画布 + 分层面板 + 单一暖色强调
-   参考 Linear 的软件工艺感，但用暖琥珀强调色（避开紫色 slop）
+   小浣熊 v7 · LUMEN 设计系统
+   玻璃拟态 + 流动光晕 + 7 套可切换主题色
+   布局保持 v6 的左侧导轨工作区，重做材质与配色
    ============================================================ */
 
 :root {
-  /* ---- 中性阶（近黑冷灰，工具型） ---- */
-  --c-canvas:#0b0b0d;
-  --c-panel:#111114;
-  --c-panel-2:#17171b;
-  --c-panel-3:#1e1e23;
-  --c-hover:#26262c;
-  --c-active:#2e2e35;
-  --c-line:#24242a;
-  --c-line-2:#32323a;
-  --c-line-3:#42424b;
+  /* ---- 中性阶：冷调深空（玻璃材质的底） ---- */
+  --c-canvas:#08090d;
+  --c-panel:rgba(22,24,32,.72);
+  --c-panel-solid:#14161e;
+  --c-panel-2:rgba(30,33,43,.66);
+  --c-panel-3:rgba(42,46,58,.6);
+  --c-hover:rgba(255,255,255,.06);
+  --c-active:rgba(255,255,255,.1);
+  --c-glass:rgba(255,255,255,.045);
+  --c-glass-strong:rgba(255,255,255,.08);
+  --c-line:rgba(255,255,255,.08);
+  --c-line-2:rgba(255,255,255,.14);
+  --c-line-3:rgba(255,255,255,.22);
 
-  --c-ink:#f2f1ee;
-  --c-ink-2:#c9c8c3;
-  --c-ink-3:#9a9992;
-  --c-ink-4:#6e6d68;
-  --c-ink-5:#4a4945;
+  --c-ink:#f4f6fb;
+  --c-ink-2:#c8ccd8;
+  --c-ink-3:#949aab;
+  --c-ink-4:#666d80;
+  --c-ink-5:#454b5c;
 
-  /* ---- 强调：暖琥珀（唯一彩色） ---- */
-  --accent:#e08a5a;
-  --accent-hi:#f0a678;
-  --accent-lo:#b96a3e;
-  --accent-dim:rgba(224,138,90,.14);
-  --accent-line:rgba(224,138,90,.32);
+  /* ---- 主题色（默认 aurora 极光青，由 [data-accent] 覆盖） ---- */
+  --accent:#38d6d0;
+  --accent-rgb:56,214,208;
+  --accent-hi:#6eeae6;
+  --accent-lo:#1fa8a4;
+  --accent-2:#5b8cff;          /* 渐变第二色 */
+  --accent-2-rgb:91,140,255;
+  --accent-dim:rgba(var(--accent-rgb),.14);
+  --accent-glow:rgba(var(--accent-rgb),.42);
+  --accent-line:rgba(var(--accent-rgb),.34);
+  --on-accent:#041417;
 
   /* ---- 语义 ---- */
-  --ok:#5fbf87;
-  --ok-dim:rgba(95,191,135,.14);
-  --warn:#e0b45a;
-  --warn-dim:rgba(224,180,90,.14);
-  --danger:#e06b6b;
-  --danger-dim:rgba(224,107,107,.14);
-  --info:#6aa8e0;
-  --info-dim:rgba(106,168,224,.14);
+  --ok:#4ade80; --ok-dim:rgba(74,222,128,.14);
+  --warn:#fbbf24; --warn-dim:rgba(251,191,36,.14);
+  --danger:#fb7185; --danger-dim:rgba(251,113,133,.14);
+  --info:#60a5fa; --info-dim:rgba(96,165,250,.14);
 
-  /* ---- 语义令牌：表面 ---- */
+  /* ---- 语义令牌 ---- */
   --surface-base:var(--c-canvas);
   --surface-panel:var(--c-panel);
   --surface-raised:var(--c-panel-2);
   --surface-hover:var(--c-hover);
   --surface-active:var(--c-active);
-  --surface-sunken:#08080a;
+  --surface-sunken:rgba(0,0,0,.32);
+  --surface-glass:var(--c-glass);
   --surface-accent:var(--accent-dim);
   --surface-ok:var(--ok-dim);
   --surface-warn:var(--warn-dim);
   --surface-danger:var(--danger-dim);
 
-  /* ---- 语义令牌：文字 ---- */
   --text-primary:var(--c-ink);
   --text-secondary:var(--c-ink-2);
   --text-body:var(--c-ink-3);
@@ -60,32 +64,32 @@
   --text-accent:var(--accent);
   --text-inverse:var(--c-canvas);
 
-  /* ---- 语义令牌：线 ---- */
   --border-hairline:var(--c-line);
   --border-divider:var(--c-line);
   --border-strong:var(--c-line-2);
   --border-focus:var(--accent);
   --border-accent:var(--accent-line);
 
-  /* ---- 图标 ---- */
   --icon-primary:var(--c-ink-2);
   --icon-secondary:var(--c-ink-3);
   --icon-muted:var(--c-ink-4);
   --icon-accent:var(--accent);
 
-  /* ---- 动作 ---- */
   --action-primary:var(--c-ink);
   --action-primary-hover:#fff;
   --action-accent:var(--accent);
   --action-accent-hover:var(--accent-hi);
   --action-danger:var(--danger);
 
-  /* ---- 阴影（深色下极淡） ---- */
-  --shadow-sm:0 1px 3px rgba(0,0,0,.4);
-  --shadow-md:0 8px 24px rgba(0,0,0,.5);
+  /* ---- 动态材质 ---- */
+  --glass-blur:20px;
+  --glass-saturate:160%;
+  --shadow-sm:0 2px 8px rgba(0,0,0,.3);
+  --shadow-md:0 8px 28px rgba(0,0,0,.45);
   --shadow-lg:0 16px 48px rgba(0,0,0,.6);
+  --shadow-glow:0 0 24px var(--accent-glow);
   --shadow-focus:0 0 0 2px var(--c-canvas),0 0 0 4px var(--accent-line);
-  --overlay:rgba(0,0,0,.68);
+  --overlay:rgba(4,5,9,.72);
 
   /* ---- 间距 4px ---- */
   --s-1:4px;--s-2:8px;--s-3:12px;--s-4:16px;--s-5:20px;
@@ -93,17 +97,14 @@
   --gutter:16px;
   --gap-xs:4px;--gap-sm:8px;--gap-md:12px;--gap-lg:16px;--gap-xl:24px;--gap-2xl:32px;
 
-  /* ---- 圆角 ---- */
-  --r-xs:6px;--r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:20px;
-  --r-sheet:20px;--r-full:999px;
+  --r-xs:6px;--r-sm:10px;--r-md:14px;--r-lg:18px;--r-xl:22px;
+  --r-sheet:24px;--r-full:999px;
   --r-card:var(--r-md);--r-control:var(--r-sm);
 
-  /* ---- 字体 ---- */
   --font:-apple-system,BlinkMacSystemFont,"HarmonyOS Sans SC","PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
   --font-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
-
-  --style-h1:600 28px/1.2 var(--font);
-  --style-h2:600 22px/1.3 var(--font);
+  --style-h1:650 28px/1.2 var(--font);
+  --style-h2:650 22px/1.3 var(--font);
   --style-h3:600 17px/1.4 var(--font);
   --style-title:500 15px/1.4 var(--font);
   --style-body:400 14px/1.6 var(--font);
@@ -113,42 +114,52 @@
   --style-btn:500 14px/1.4 var(--font);
   --style-btn-sm:500 12px/1.4 var(--font);
   --fs-xs:12px;--fs-sm:13px;--fs-base:14px;--fs-md:15px;--fs-lg:17px;--fs-xl:20px;
+  --reading-size:15px;--reading-line:1.7;
 
-  --reading-size:15px;
-  --reading-line:1.7;
-
-  /* ---- 动效 ---- */
   --ease:cubic-bezier(.22,1,.36,1);
   --ease-out:cubic-bezier(.16,1,.3,1);
-  --t-fast:140ms;
-  --t-mid:280ms;
-  --t-slow:440ms;
+  --t-fast:140ms;--t-mid:280ms;--t-slow:480ms;
   --t-colors:color var(--t-fast) var(--ease),background-color var(--t-fast) var(--ease),border-color var(--t-fast) var(--ease);
   --t-transform:transform var(--t-mid) var(--ease);
   --t-sheet:transform var(--t-mid) var(--ease-out);
-  --transition-card:transform var(--t-fast) var(--ease),box-shadow var(--t-fast) var(--ease);
+  --transition-card:transform var(--t-fast) var(--ease),box-shadow var(--t-fast) var(--ease),background var(--t-fast) var(--ease);
 
-  /* ---- 结构 ---- */
   --sa-t:env(safe-area-inset-top,0px);
   --sa-b:env(safe-area-inset-bottom,0px);
-  --topbar-h:52px;
-  --dock-h:64px;
-  --rail-w:64px;
+  --topbar-h:52px;--dock-h:64px;--rail-w:64px;
   --z-appbar:100;--z-composer:110;--z-toast:200;--z-sheet:300;--z-modal:400;--z-lightbox:500;--z-boot:600;
 }
 
-/* ---- 浅色主题（可切换） ---- */
+/* ============ 7 套主题色 ============ */
+[data-accent="aurora"]  {--accent:#38d6d0;--accent-rgb:56,214,208;--accent-hi:#6eeae6;--accent-lo:#1fa8a4;--accent-2:#5b8cff;--accent-2-rgb:91,140,255;--on-accent:#041417;}
+[data-accent="ocean"]   {--accent:#5b8cff;--accent-rgb:91,140,255;--accent-hi:#8badff;--accent-lo:#3d6ae0;--accent-2:#38d6d0;--accent-2-rgb:56,214,208;--on-accent:#04101f;}
+[data-accent="violet"]  {--accent:#a78bfa;--accent-rgb:167,139,250;--accent-hi:#c4b5fd;--accent-lo:#7c5fe0;--accent-2:#f472b6;--accent-2-rgb:244,114,182;--on-accent:#100a1f;}
+[data-accent="rose"]    {--accent:#fb7185;--accent-rgb:251,113,133;--accent-hi:#fda4af;--accent-lo:#e11d48;--accent-2:#fbbf24;--accent-2-rgb:251,191,36;--on-accent:#1f0410;}
+[data-accent="emerald"] {--accent:#34d399;--accent-rgb:52,211,153;--accent-hi:#6ee7b7;--accent-lo:#059669;--accent-2:#38bdf8;--accent-2-rgb:56,189,248;--on-accent:#04140d;}
+[data-accent="amber"]   {--accent:#fbbf24;--accent-rgb:251,191,36;--accent-hi:#fcd34d;--accent-lo:#d97706;--accent-2:#fb7185;--accent-2-rgb:251,113,133;--on-accent:#1f1404;}
+[data-accent="slate"]   {--accent:#94a3b8;--accent-rgb:148,163,184;--accent-hi:#cbd5e1;--accent-lo:#64748b;--accent-2:#38d6d0;--accent-2-rgb:56,214,208;--on-accent:#0a0d12;}
+
+/* 动态材质开关：关闭时移除玻璃与光晕 */
+[data-fx="off"] {--glass-blur:0px;--glass-saturate:100%;--shadow-glow:none;}
+
+/* ---- 浅色主题 ---- */
 :root[data-theme="light"] {
-  --c-canvas:#faf9f6;--c-panel:#fff;--c-panel-2:#f4f2ed;--c-panel-3:#ece9e1;
-  --c-hover:#e9e6de;--c-active:#e2ded4;--c-line:#e6e2d9;--c-line-2:#d8d3c8;--c-line-3:#c4bdb0;
-  --c-ink:#1a1917;--c-ink-2:#3d3b37;--c-ink-3:#6a6761;--c-ink-4:#96918a;--c-ink-5:#b8b3ab;
-  --accent:#b8623a;--accent-hi:#9c502c;--accent-lo:#d98a62;
-  --accent-dim:rgba(184,98,58,.10);--accent-line:rgba(184,98,58,.28);
-  --action-primary:#1a1917;--action-primary-hover:#000;
+  --c-canvas:#f4f6fa;
+  --c-panel:rgba(255,255,255,.78);
+  --c-panel-solid:#ffffff;
+  --c-panel-2:rgba(255,255,255,.6);
+  --c-panel-3:rgba(255,255,255,.5);
+  --c-glass:rgba(255,255,255,.5);
+  --c-glass-strong:rgba(255,255,255,.72);
+  --c-line:rgba(20,24,36,.08);
+  --c-line-2:rgba(20,24,36,.14);
+  --c-line-3:rgba(20,24,36,.22);
+  --c-ink:#12151d;--c-ink-2:#39404f;--c-ink-3:#5c6475;--c-ink-4:#858d9e;--c-ink-5:#aeb5c2;
+  --action-primary:#12151d;--action-primary-hover:#000;
   --text-inverse:#fff;
-  --surface-sunken:#f0ede6;
-  --shadow-sm:0 1px 3px rgba(20,19,17,.06);
-  --shadow-md:0 8px 24px rgba(20,19,17,.1);
-  --shadow-lg:0 16px 48px rgba(20,19,17,.14);
-  --overlay:rgba(20,19,17,.42);
+  --surface-sunken:rgba(20,24,36,.04);
+  --overlay:rgba(20,24,36,.42);
+  --shadow-sm:0 1px 3px rgba(20,24,36,.06);
+  --shadow-md:0 8px 28px rgba(20,24,36,.1);
+  --shadow-lg:0 16px 48px rgba(20,24,36,.16);
 }

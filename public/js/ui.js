@@ -78,6 +78,12 @@
     if (meta) meta.setAttribute('content', t === 'dark' ? '#0b0b0d' : '#faf9f6');
     const metaCS = document.querySelector('meta[name="color-scheme"]');
     if (metaCS) metaCS.setAttribute('content', t === 'dark' ? 'dark' : 'light');
+
+    // v7: 应用主题色和动态材质
+    const accent = S.prefs.accent || 'aurora';
+    document.documentElement.setAttribute('data-accent', accent);
+    const fx = S.prefs.fx !== false;
+    document.documentElement.setAttribute('data-fx', fx ? 'on' : 'off');
   }
 
   function setTheme(mode) {

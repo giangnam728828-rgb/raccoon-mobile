@@ -56,12 +56,14 @@
   const DEFAULTS = {
     model: '',
     effort: 'off',
-    theme: 'dark',        // auto | light | dark (v6 默认深色工具风格)
+    theme: 'dark',        // auto | light | dark (v7 默认深色工具风格)
     fontScale: 1,         // 1 | 1.08 | 1.18
     haptic: true,
     nation: '+86',
     sendOnEnter: true,
     showThought: true,    // 流式时自动展开思考
+    accent: 'aurora',     // v7 新增：主题色（aurora/ocean/violet/rose/emerald/amber/slate）
+    fx: true,             // v7 新增：动态材质开关
   };
 
   const state = {

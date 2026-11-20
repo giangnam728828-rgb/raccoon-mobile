@@ -1,6 +1,6 @@
 /* ============================================================
-   小浣熊 v4.0 · 设置 / 模型 / 思考强度 / 我的
-   设置用「注册表」组织：新增一项只需往 SETTINGS 里加一条
+   小浣熊 v7 · 设置 / 模型 / 思考强度 / 我的
+   新增：主题色选择器（7 套配色）+ 动态材质开关 + 丰富功能分组
    ============================================================ */
 (function (global) {
   'use strict';
@@ -20,19 +20,67 @@
     { id: 'max', name: '最强', desc: '最完整的推理，最慢' },
   ];
 
+  // ---------- 主题色配置 ----------
+  const THEMES = [
+    { id: 'aurora', name: '极光青', sw1: '#38d6d0', sw2: '#5b8cff' },
+    { id: 'ocean', name: '海洋蓝', sw1: '#5b8cff', sw2: '#38d6d0' },
+    { id: 'violet', name: '紫罗兰', sw1: '#a78bfa', sw2: '#f472b6' },
+    { id: 'rose', name: '玫瑰粉', sw1: '#fb7185', sw2: '#fbbf24' },
+    { id: 'emerald', name: '翡翠绿', sw1: '#34d399', sw2: '#38bdf8' },
+    { id: 'amber', name: '琥珀黄', sw1: '#fbbf24', sw2: '#fb7185' },
+    { id: 'slate', name: '板岩灰', sw1: '#94a3b8', sw2: '#38d6d0' },
+  ];
+
   function effortName() {
     const e = EFFORTS.find((x) => x.id === S.prefs.effort);
     return e ? e.name : '关闭';
   }
 
   // ============================================================
-  // 设置注册表
-  // 每项：{ id, group, label, icon, type, value(), render?(), onTap?() }
-  // type: 'nav' | 'switch' | 'text' | 'cycle'
+  // 设置注册表（按分组组织）
   // ============================================================
   const SETTINGS = [
+    // ===== 外观 =====
     {
-      id: 'theme', group: '外观', label: '主题', icon: 'palette', type: 'cycle',
+      id: 'theme-color', group: '外观', label: '主题色', icon: 'palette', type: 'custom',
+      value: () => S.prefs.accent || 'aurora',
+      render: (row, it) => {
+        const wrap = el('div', 'theme-swatches');
+        THEMES.forEach((t) => {
+          const item = el('div', 'swatch-item');
+          const sw = el('div', 'swatch' + ((it.value() === t.id) ? ' on' : ''));
+          sw.style.setProperty('--sw1', t.sw1);
+          sw.style.setProperty('--sw2', t.sw2);
+          sw.setAttribute('title', t.name);
+          sw.addEventListener('click', (e) => {
+            e.stopPropagation();
+            S.prefs.accent = t.id;
+            document.documentElement.setAttribute('data-accent', t.id);
+            RC.savePrefs();
+            renderSettings();
+            RC.haptic(6);
+            RC.toast('主题色：' + t.name);
+          });
+          item.appendChild(sw);
+          const nm = el('span', 'theme-name', t.name);
+          item.appendChild(nm);
+          wrap.appendChild(item);
+        });
+        row.appendChild(wrap);
+      },
+    },
+    {
+      id: 'fx', group: '外观', label: '动态材质', icon: 'spark', type: 'cycle',
+      value: () => (S.prefs.fx === false ? '关闭' : '开启'),
+      cycle: () => {
+        S.prefs.fx = !S.prefs.fx;
+        document.documentElement.setAttribute('data-fx', S.prefs.fx ? 'on' : 'off');
+        RC.savePrefs();
+        RC.toast(S.prefs.fx ? '动态材质已开启' : '动态材质已关闭');
+      },
+    },
+    {
+      id: 'theme', group: '外观', label: '明暗主题', icon: 'palette', type: 'cycle',
       value: () => RC.THEME_NAMES[S.prefs.theme] || '跟随系统',
       cycle: () => {
         const order = ['auto', 'light', 'dark'];
@@ -46,6 +94,8 @@
       value: () => RC.fontStepName(),
       cycle: () => RC.cycleFontScale(),
     },
+
+    // ===== 对话 =====
     {
       id: 'thought', group: '对话', label: '自动展开思考', icon: 'spark', type: 'switch',
       value: () => !!S.prefs.showThought,
@@ -71,6 +121,143 @@
         RC.savePrefs();
       },
     },
+    {
+      id: 'system', group: '对话', label: '系统提示词', icon: 'cog', type: 'nav',
+      onTap: () => RC.openSystemSheet(),
+    },
+    {
+      id: 'prompts', group: '对话', label: '快捷指令', icon: 'star', type: 'nav',
+      onTap: () => {
+        RC.renderPrompts();
+        RC.openSheet('sheet-prompts');
+      },
+    },
+
+    // ===== 工具 =====
+    {
+      id: 'files', group: '工具', label: '文件管理', icon: 'folder', type: 'nav',
+      onTap: () => RC.setTab('files'),
+    },
+    {
+      id: 'device', group: '工具', label: '设备控制', icon: 'phone', type: 'nav',
+      onTap: () => RC.setTab('device'),
+    },
+    {
+      id: 'terminal', group: '工具', label: '终端', icon: 'terminal', type: 'nav',
+      onTap: () => {
+        RC.openSheet('sheet-terminal');
+      },
+    },
+    {
+      id: 'git', group: '工具', label: 'Git 版本控制', icon: 'git', type: 'nav',
+      onTap: () => {
+        RC.gitLoad && RC.gitLoad();
+        RC.openSheet('sheet-git');
+      },
+    },
+    {
+      id: 'plugins', group: '工具', label: '插件中心', icon: 'puzzle', type: 'nav',
+      onTap: () => {
+        RC.renderPlugins && RC.renderPlugins();
+        RC.openSheet('sheet-plugins');
+      },
+    },
+
+    // ===== 数据 =====
+    {
+      id: 'export', group: '数据', label: '导出当前对话', icon: 'download', type: 'action',
+      action: () => RC.exportCurrent(),
+    },
+    {
+      id: 'storage', group: '数据', label: '清理本地数据', icon: 'trash', type: 'danger',
+      value: () => RC.fmtBytes(RC.storageBytes()),
+      onTap: async () => {
+        const ok = await RC.confirmBox(
+          '本地已用 ' + RC.fmtBytes(RC.storageBytes()) +
+          '，共 ' + RC.stats().chats + ' 个对话。清理会删除所有本地对话记录。',
+          { okText: '清理', danger: true }
+        );
+        if (!ok) return;
+        RC.clearAllData();
+      },
+    },
+    {
+      id: 'backup', group: '数据', label: '云端备份', icon: 'cloud-upload', type: 'nav',
+      onTap: () => RC.syncUpload(),
+    },
+    {
+      id: 'restore', group: '数据', label: '从云端恢复', icon: 'cloud-download', type: 'nav',
+      onTap: () => RC.syncDownload(),
+    },
+
+    // ===== 连接 =====
+    {
+      id: 'conn', group: '连接', label: '连接诊断', icon: 'wifi', type: 'nav',
+      onTap: async () => {
+        RC.openSheet('sheet-diag');
+        RC.testConn();
+      },
+    },
+    {
+      id: 'channel', group: '连接', label: '网络通道', icon: 'network', type: 'nav',
+      onTap: () => RC.useProxy(),
+    },
+    {
+      id: 'checkin', group: '积分', label: '每日签到', icon: 'gift', type: 'action',
+      action: async () => {
+        try {
+          const d = await RC.checkin();
+          RC.toast((d && d.message) || (d && d.ok ? '已领取' : '领取失败'));
+        } catch (e) {
+          RC.toast(e.message || '领取失败');
+        }
+        RC.refreshMe();
+      },
+    },
+    {
+      id: 'onboarding', group: '积分', label: '新手奖励', icon: 'star', type: 'action',
+      action: async () => {
+        try {
+          const d = await RC.onboarding();
+          RC.toast((d && d.message) || (d && d.ok ? '已领取' : '领取失败'));
+        } catch (e) {
+          RC.toast(e.message || '领取失败');
+        }
+        RC.refreshMe();
+      },
+    },
+
+    // ===== 关于 =====
+    {
+      id: 'about', group: '关于', label: '版本信息', icon: 'info', type: 'text',
+      value: () => 'v' + RC.version,
+    },
+    {
+      id: 'reset', group: '关于', label: '恢复默认设置', icon: 'refresh', type: 'danger',
+      onTap: async () => {
+        const ok = await RC.confirmBox('恢复默认设置？对话记录不会被删除。', { okText: '恢复' });
+        if (!ok) return;
+        S.prefs = Object.assign({}, RC.DEFAULTS, { nation: S.prefs.nation, model: S.prefs.model });
+        RC.savePrefs();
+        RC.applyTheme();
+        RC.applyFontScale();
+        document.documentElement.setAttribute('data-accent', S.prefs.accent || 'aurora');
+        document.documentElement.setAttribute('data-fx', S.prefs.fx !== false ? 'on' : 'off');
+        renderSettings();
+        RC.updateSend();
+        RC.renderMe();
+        RC.toast('已恢复默认');
+      },
+    },
+    {
+      id: 'privacy', group: '关于', label: '隐私政策', icon: 'shield', type: 'link', href: 'https://example.com/privacy', target: '_blank',
+    },
+    {
+      id: 'terms', group: '关于', label: '服务条款', icon: 'file-text', type: 'link', href: 'https://example.com/terms', target: '_blank',
+    },
+    {
+      id: 'github', group: '关于', label: 'GitHub 仓库', icon: 'github', type: 'link', href: 'https://github.com/giangnam728828-rgb/raccoon-mobile', target: '_blank',
+    },
   ];
 
   function renderSettings() {
@@ -94,7 +281,10 @@
         row.appendChild(icon(it.icon));
         row.appendChild(el('span', 'lbl', it.label));
 
-        if (it.type === 'switch') {
+        if (it.type === 'custom') {
+          // 自定义渲染（如主题色选择器）
+          if (it.render) it.render(row, it);
+        } else if (it.type === 'switch') {
           const sw = el('button', 'switch');
           sw.type = 'button';
           sw.setAttribute('role', 'switch');
@@ -106,6 +296,24 @@
             RC.haptic(6);
           });
           row.appendChild(sw);
+        } else if (it.type === 'nav' || it.type === 'action' || it.type === 'danger') {
+          row.addEventListener('click', () => {
+            if (it.action) {
+              it.action();
+              renderMe();
+            } else if (it.onTap) {
+              it.onTap();
+            }
+          });
+          row.classList.add('cycle');
+          row.appendChild(el('span', 'val', it.value ? it.value() : ''));
+          row.appendChild(icon('chevron-right', 'sm chevron'));
+        } else if (it.type === 'link') {
+          row.addEventListener('click', () => {
+            window.open(it.href, it.target || '_blank');
+          });
+          row.classList.add('cycle');
+          row.appendChild(icon('external-link', 'sm chevron'));
         } else {
           row.appendChild(el('span', 'val', it.value()));
           row.appendChild(icon('chevron-right', 'sm chevron'));
@@ -120,35 +328,6 @@
         box.appendChild(row);
       });
     });
-
-    // 关于
-    const about = el('div', 'group-label');
-    about.textContent = '关于';
-    box.appendChild(about);
-
-    const ver = el('div', 'setting-row');
-    ver.appendChild(icon('info'));
-    ver.appendChild(el('span', 'lbl', '版本'));
-    ver.appendChild(el('span', 'val mono', RC.version));
-    box.appendChild(ver);
-
-    const reset = el('button', 'setting-row');
-    reset.type = 'button';
-    reset.appendChild(icon('refresh'));
-    reset.appendChild(el('span', 'lbl', '恢复默认设置'));
-    reset.addEventListener('click', async () => {
-      const ok = await RC.confirmBox('恢复默认设置？对话记录不会被删除。', { okText: '恢复' });
-      if (!ok) return;
-      S.prefs = Object.assign({}, RC.DEFAULTS, { nation: S.prefs.nation, model: S.prefs.model });
-      RC.savePrefs();
-      RC.applyTheme();
-      RC.applyFontScale();
-      renderSettings();
-      RC.updateSend();
-      RC.renderMe();
-      RC.toast('已恢复默认');
-    });
-    box.appendChild(reset);
   }
 
   // ---------- 模型列表 ----------
@@ -310,7 +489,6 @@
     }
     const effEl = $('effort-name');
     const btn = $('btn-effort');
-    // 如果 btn-effort 不存在（已隐藏），跳过按钮样式更新
     if (!btn && !effEl) return;
     if (effEl) {
       if (!RC.reasoningSupported()) {
@@ -399,39 +577,6 @@
       RC.renderEffortList();
       RC.openSheet('sheet-effort');
     });
-    open('row-system', () => {
-      RC.openSystemSheet();
-    });
-    open('row-prompts', () => {
-      RC.renderPrompts();
-      RC.openSheet('sheet-prompts');
-    });
-    open('row-export', () => {
-      RC.exportCurrent();
-    });
-    open('row-storage', async () => {
-      const ok = await RC.confirmBox(
-        '本地已用 ' + RC.fmtBytes(RC.storageBytes()) +
-        '，共 ' + RC.stats().chats + ' 个对话。清理会删除所有本地对话记录。',
-        { okText: '清理', danger: true }
-      );
-      if (!ok) return;
-      RC.clearAllData();
-    });
-    open('row-conn', async () => {
-      RC.openSheet('sheet-diag');
-      RC.testConn();
-    });
-    open('row-channel', () => RC.useProxy());
-    open('row-checkin', async () => {
-      try {
-        const d = await RC.checkin();
-        RC.toast((d && d.message) || (d && d.ok ? '已领取' : '领取失败'));
-      } catch (e) {
-        RC.toast(e.message || '领取失败');
-      }
-      RC.refreshMe();
-    });
     open('row-onboarding', async () => {
       try {
         const d = await RC.onboarding();
@@ -459,7 +604,6 @@
     open('row-about', () => {
       RC.toast('小浣熊 · v' + RC.version);
     });
-    // privacy / terms / github 现在是 <a target=_system>，交给原生浏览器，不用 JS 拦截
     open('row-logout', async () => {
       const ok = await RC.confirmBox('退出登录？本地对话记录会保留。', {
         okText: '退出', danger: true,
@@ -469,7 +613,7 @@
   }
 
   Object.assign(RC, {
-    EFFORTS, SETTINGS,
+    EFFORTS, SETTINGS, THEMES,
     effortName, renderSettings, renderModelList, renderEffortList,
     paintModelBar, paintTitle, renderMe, bindMe, shortName, modelGroup,
   });
