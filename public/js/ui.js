@@ -146,6 +146,23 @@
     if (cancel && bindOnce(cancel, 'cancel')) {
       cancel.addEventListener('click', () => RC.settleConfirm(false));
     }
+
+    // 输入弹层按钮（文件管理新建/重命名用）
+    const pOk = $('prompt-ok');
+    if (pOk && bindOnce(pOk, 'pok')) {
+      pOk.addEventListener('click', () => {
+        const v = $('prompt-default').value.trim();
+        RC.settlePrompt(v || null);
+      });
+    }
+    const pCancel = $('prompt-cancel');
+    if (pCancel && bindOnce(pCancel, 'pcancel')) {
+      pCancel.addEventListener('click', () => RC.settlePrompt(null));
+    }
+    const pdScrim = document.querySelector('#sheet-prompt .sheet-scrim');
+    if (pdScrim && bindOnce(pdScrim, 'pdScrim')) {
+      pdScrim.addEventListener('click', () => RC.settlePrompt(null));
+    }
   }
 
   // ---------- 通用操作表 ----------

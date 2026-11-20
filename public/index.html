@@ -86,6 +86,21 @@
   <p class="boot-name">小浣熊</p>
 </div>
 
+<!-- 强保底：与业务脚本无关，任何情况下 1.5s 内必须收起启动层，杜绝卡死。 -->
+<script>
+  (function () {
+    setTimeout(function () {
+      try {
+        var b = document.getElementById('boot');
+        if (b) {
+          b.classList.add('gone');
+          setTimeout(function () { b.style.display = 'none'; }, 300);
+        }
+      } catch (e) { /* 忽略 */ }
+    }, 1500);
+  })();
+</script>
+
 <!-- ============================================================
      登录页
      ============================================================ -->
@@ -547,6 +562,27 @@
     <div class="confirm-actions">
       <button id="confirm-cancel" class="btn btn-secondary btn-md btn-block" type="button">取消</button>
       <button id="confirm-ok" class="btn btn-primary btn-md btn-block" type="button">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- 输入弹层（文件管理新建/重命名等使用） -->
+<div id="sheet-prompt" class="sheet hidden" role="dialog" aria-modal="true" aria-label="输入">
+  <div class="sheet-scrim" data-close></div>
+  <div class="sheet-panel">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <span class="t" id="prompt-text">输入</span>
+      <button class="icon-btn sm" data-close type="button" aria-label="关闭"><svg class="i"><use href="#i-close"/></svg></button>
+    </div>
+    <div class="sheet-body">
+      <div class="field">
+        <input id="prompt-default" class="input" placeholder="请输入" maxlength="120">
+      </div>
+    </div>
+    <div class="sheet-actions">
+      <button id="prompt-cancel" class="btn btn-secondary btn-md btn-block" type="button">取消</button>
+      <button id="prompt-ok" class="btn btn-primary btn-md btn-block" type="button">确定</button>
     </div>
   </div>
 </div>

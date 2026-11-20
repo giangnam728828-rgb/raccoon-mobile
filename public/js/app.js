@@ -1103,13 +1103,7 @@
     RC.applyFontScale();
     RC.loadChats();
 
-    bind();
-
-    RC.autoGrow();
-    RC.updateSend();
-    RC.renderDrafts();
-
-    // 界面先可用：立刻显示登录页并收起启动层（网络慢也不卡启动屏）
+    // 界面先可用：立刻显示登录页并收起启动层（任何后续绑定/请求失败都不会再冻住界面）
     const bootEl = $('boot');
     if (bootEl) {
       setTimeout(() => bootEl.classList.add('gone'), 60);
@@ -1117,6 +1111,20 @@
     }
     RC.showView('login');
     RC.renderNations();
+
+    try {
+      bind();
+    } catch (e) {
+      console.error('[app] bind 失败（已解锁界面，个别功能可能不可用）:', e && e.message);
+    }
+
+    try {
+      RC.autoGrow();
+      RC.updateSend();
+      RC.renderDrafts();
+    } catch (e) {
+      console.error('[app] 输入区初始化失败:', e && e.message);
+    }
 
     // 配置（带超时，避免卡死）
     try {

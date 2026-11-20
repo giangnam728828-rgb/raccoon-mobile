@@ -516,8 +516,8 @@
   }
 
   function terminalBind() {
-    $('#term-clear').onclick = () => { $('terminal').innerHTML = ''; };
-    $('#term-kill').onclick = () => { toast('终止功能需后端支持'); };
+    $('term-clear').onclick = () => { $('terminal').innerHTML = ''; };
+    $('term-kill').onclick = () => { toast('终止功能需后端支持'); };
   }
 
   // ============================================================
@@ -616,37 +616,41 @@
   }
 
   // ============================================================
-  // 绑定入口
+  // 绑定入口（每个绑定独立，失败只告警不拖垮启动）
   // ============================================================
   function bindModules() {
-    // 文件管理
-    $('#row-files').addEventListener('click', () => { fmInit(); openSheet('sheet-files'); });
-    $('#file-new-folder').onclick = fmNewFolder;
-    $('#file-new-file').onclick = fmNewFile;
-    $('#file-upload').onclick = () => $('file-upload-input').click();
+    try {
+      // 文件管理
+      $('row-files').addEventListener('click', () => { fmInit(); openSheet('sheet-files'); });
+      $('file-new-folder').onclick = fmNewFolder;
+      $('file-new-file').onclick = fmNewFile;
+      $('file-upload').onclick = () => $('file-upload-input').click();
 
-    // 终端
-    $('#row-terminal').addEventListener('click', () => { terminalConnect(); openSheet('sheet-terminal'); });
-    $('#term-clear').onclick = () => { $('terminal').innerHTML = ''; };
-    $('#term-kill').onclick = terminalDisconnect;
+      // 终端
+      $('row-terminal').addEventListener('click', () => { terminalConnect(); openSheet('sheet-terminal'); });
+      $('term-clear').onclick = () => { $('terminal').innerHTML = ''; };
+      $('term-kill').onclick = terminalDisconnect;
 
-    // Git
-    $('#row-git').addEventListener('click', () => { gitLoad(); openSheet('sheet-git'); });
-    $('#git-pull').onclick = gitPull;
-    $('#git-push').onclick = gitPush;
+      // Git
+      $('row-git').addEventListener('click', () => { gitLoad(); openSheet('sheet-git'); });
+      $('git-pull').onclick = gitPull;
+      $('git-push').onclick = gitPush;
 
-    // 编辑器
-    $('#editor-save').onclick = editorSave;
-    $('#editor-run').onclick = editorRun;
+      // 编辑器
+      $('editor-save').onclick = editorSave;
+      $('editor-run').onclick = editorRun;
 
-    // Sheet 打开时加载
-    const origOpenSheet = RC.openSheet;
-    RC.openSheet = function(id) {
-      origOpenSheet(id);
-      if (id === 'sheet-files') { fmInit(); }
-      if (id === 'sheet-git') { gitLoad(); }
-      if (id === 'sheet-terminal') { terminalConnect(); }
-    };
+      // Sheet 打开时加载
+      const origOpenSheet = RC.openSheet;
+      RC.openSheet = function(id) {
+        origOpenSheet(id);
+        if (id === 'sheet-files') { fmInit(); }
+        if (id === 'sheet-git') { gitLoad(); }
+        if (id === 'sheet-terminal') { terminalConnect(); }
+      };
+    } catch (e) {
+      console.error('[modules] bindModules 部分绑定失败（不影响启动）:', e && e.message);
+    }
   }
 
   // 暴露给 RC

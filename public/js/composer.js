@@ -326,18 +326,33 @@
       RC.openSheet('sheet-attach');
     });
 
-    $('att-camera').addEventListener('click', () => {
-      RC.closeSheet('sheet-attach');
-      $('file-camera').click();
-    });
-    $('att-photo').addEventListener('click', () => {
-      RC.closeSheet('sheet-attach');
-      $('file-image').click();
-    });
-    $('att-file').addEventListener('click', () => {
-      RC.closeSheet('sheet-attach');
-      $('file-doc').click();
-    });
+    // 附件按钮（v4.0 改成了 #attach-grid 动态生成，这里做兼容）
+    const grid = $('attach-grid');
+    if (grid) {
+      // 如果网格是空的，补上三个按钮
+      if (!grid.querySelector('[data-attach]')) {
+        ['camera', 'photo', 'file'].forEach(kind => {
+          const btn = el('button', 'attach-btn');
+          btn.setAttribute('data-attach', kind);
+          btn.innerHTML = RC.icon(kind === 'camera' ? 'camera' : kind === 'photo' ? 'image' : 'file-code');
+          btn.appendChild(document.createTextNode(kind === 'camera' ? '相机' : kind === 'photo' ? '相册' : '文件'));
+          btn.addEventListener('click', () => {
+            RC.closeSheet('sheet-attach');
+            if (kind === 'camera') $('file-camera').click();
+            else if (kind === 'photo') $('file-image').click();
+            else $('file-doc').click();
+          });
+          grid.appendChild(btn);
+        });
+      }
+      // 或者旧版直接绑 id（兼容老版本）
+      const attCamera = $('att-camera');
+      if (attCamera) attCamera.addEventListener('click', () => { RC.closeSheet('sheet-attach'); $('file-camera').click(); });
+      const attPhoto = $('att-photo');
+      if (attPhoto) attPhoto.addEventListener('click', () => { RC.closeSheet('sheet-attach'); $('file-image').click(); });
+      const attFile = $('att-file');
+      if (attFile) attFile.addEventListener('click', () => { RC.closeSheet('sheet-attach'); $('file-doc').click(); });
+    }
 
     $('file-image').addEventListener('change', (e) => {
       addImages(e.target.files);

@@ -219,11 +219,31 @@
     return 'u-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
   }
 
+  // 简易 confirm/prompt（用于文件管理等模块）
+  let promptResolve = null;
+  function prompt(message, defaultValue) {
+    const box = $('sheet-prompt');
+    if (!box) return Promise.resolve(null);
+    $('prompt-text').textContent = message || '';
+    $('prompt-default').value = defaultValue || '';
+    openSheet('sheet-prompt');
+    return new Promise((resolve) => {
+      promptResolve = resolve;
+    });
+  }
+  function settlePrompt(v) {
+    closeSheet('sheet-prompt');
+    const r = promptResolve;
+    promptResolve = null;
+    if (r) r(v);
+  }
+
   Object.assign(RC, {
     $, $$, el, icon, esc, clamp, raf, debounce, sleep, uid,
     fmtTime, fmtBytes, fmtContext, haptic,
     toast, openSheet, closeSheet, closeTopSheet, closeAllSheets,
     confirmBox, settleConfirm,
     copyText, share,
+    prompt, settlePrompt,
   });
 })(window);
