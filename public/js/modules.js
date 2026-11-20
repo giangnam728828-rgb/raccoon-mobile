@@ -112,7 +112,7 @@
         const tbody = table.querySelector('tbody');
         fmState.entries.forEach(entry => {
           const tr = el('tr');
-          tr.style.cssText = 'cursor:pointer;border-bottom:1px solid var(--border-divider);transition:background var(--duration-fast)';
+          tr.style.cssText = 'cursor:pointer;border-bottom:1px solid var(--border-divider);transition:background var(--t-fast)';
           tr.onmouseenter = () => tr.style.background = 'var(--surface-hover)';
           tr.onmouseleave = () => tr.style.background = '';
           tr.onclick = (e) => {
@@ -425,7 +425,7 @@
 
   function editorInitTextarea(box) {
     const ta = el('textarea');
-    ta.style.cssText = 'width:100%;height:100%;border:none;outline:none;resize:none;padding:16px;font-family:var(--font-mono);font-size:13px;line-height:1.6;background:var(--core-paper-1000);color:var(--core-paper-00)';
+    ta.style.cssText = 'width:100%;height:100%;border:none;outline:none;resize:none;padding:16px;font-family:var(--font-mono);font-size:13px;line-height:1.6;background:var(--c-900);color:var(--c-50)';
     ta.value = editorState.content;
     ta.spellcheck = false;
     ta.addEventListener('input', () => { editorState.content = ta.value; editorState.modified = true; });

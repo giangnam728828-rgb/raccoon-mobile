@@ -1,447 +1,195 @@
 /* ============================================================
-   小浣熊 v4.0 · 设计令牌
-   方向「纸与墨」：暖纸底 + 墨色字 + 一支玫瑰色的笔尖
-   两层架构：Core Colors（原始色板） → Color System（语义别名，含 Light/Dark）
+   小浣熊 v5 · 设计令牌「纸与墨 · 第二版」
+   参考 Claude / Linear 的设计逻辑：暖白画布 + 发丝线 + 克制暖色强调
+   —— 去掉粗粉描边，靠色块与阅读节奏建立层级，而不是靠边框
    ============================================================ */
 
-/* ============================================================
-   Layer 1: Core Colors — 原始色板（仅定义数值，不直接用于组件）
-   ============================================================ */
+/* ===== Layer 1 · Core Colors（原始色板） ===== */
 :root {
-  /* ---- 纸：11 级中性阶梯（暖灰）---- */
-  --core-paper-00: #faf1ee;
-  --core-paper-50: #f5e8e2;
-  --core-paper-100: #efe0d8;
-  --core-paper-200: #e4cfc5;
-  --core-paper-300: #d4b8aa;
-  --core-paper-400: #c29d8c;
-  --core-paper-500: #ae8370;   /* 基准暖灰 */
-  --core-paper-600: #9d6f5d;
-  --core-paper-700: #85594a;
-  --core-paper-800: #6b4537;
-  --core-paper-900: #4f3024;
-  --core-paper-1000: #2e1a10;
+  /* 中性暖阶（画布 / 表面 / 发丝线 / 墨字 同源） */
+  --c-0:  #fcfbf8;   /* 最亮：raised */
+  --c-50: #faf9f5;   /* 画布 canvas */
+  --c-100:#f5f2ea;   /* 柔和区块 */
+  --c-150:#efebe1;   /* sunken */
+  --c-200:#e8e3d8;   /* 发丝线（比 v4 的粉线淡得多） */
+  --c-300:#d9d3c6;   /* 分隔线 / 禁用 */
+  --c-400:#b8b1a4;   /* 次要图标 */
+  --c-500:#8e8b82;   /* muted 文字 */
+  --c-600:#6c6a64;   /* secondary 文字 */
+  --c-700:#3d3d3a;   /* 正文 */
+  --c-800:#252523;   /* 强调文字 */
+  --c-900:#141413;   /* 墨 / 主按钮 */
 
-  /* ---- 墨：文本专用 ---- */
-  --core-ink-00: #faf1ee;
-  --core-ink-500: #2e262c;     /* 基准墨色 */
-  --core-ink-1000: #0d0a0b;
+  /* 品牌暖色（珊瑚笔尖，只用在强调与生成态） */
+  --accent-50: #fbf1ec;
+  --accent-100:#f6e3da;
+  --accent-400:#c97a5c;
+  --accent-500:#b85f42;
+  --accent-600:#9c4c33;
+  --accent-on: #fff;
 
-  /* ---- 笔尖：品牌色 ---- */
-  --core-rose-50: #fef2f2;
-  --core-rose-100: #fee2e2;
-  --core-rose-200: #fecaca;
-  --core-rose-300: #fca5a5;
-  --core-rose-400: #f87171;
-  --core-rose-500: #a5525d;    /* 基准品牌色 */
-  --core-rose-600: #8c414b;
-  --core-rose-700: #73343d;
-  --core-rose-800: #5c2a30;
-  --core-rose-900: #4a2328;
+  /* 语义 */
+  --ok:#4f8a63; --ok-bg:#eaf3ed;
+  --warn:#a9782f; --warn-bg:#f7efdd;
+  --danger:#b4453f; --danger-bg:#f8e9e7;
 
-  /* ---- 樱花：辅助品牌色 ---- */
-  --core-sakura-500: #cc838b;
-
-  /* ---- 语义色 ---- */
-  --core-ok-50: #ecfdf5;
-  --core-ok-100: #d1fae5;
-  --core-ok-500: #4f8a63;
-  --core-ok-600: #3d7a52;
-  --core-warn-50: #fffbeb;
-  --core-warn-100: #fef3c7;
-  --core-warn-500: #b8813c;
-  --core-warn-600: #9a6b30;
-  --core-danger-50: #fef2f2;
-  --core-danger-100: #fee2e2;
-  --core-danger-500: #b4453f;
-  --core-danger-600: #9b3a35;
-
-  /* ---- 透明中性（用于 Overlay）---- */
-  --core-alpha-700-16: rgba(79, 48, 36, 0.16);
-  --core-alpha-700-24: rgba(79, 48, 36, 0.24);
-  --core-alpha-700-40: rgba(79, 48, 36, 0.40);
-  --core-alpha-700-64: rgba(79, 48, 36, 0.64);
-  --core-alpha-700-80: rgba(79, 48, 36, 0.80);
+  /* 透明 */
+  --alpha-16: rgba(20,20,19,.16);
+  --alpha-32: rgba(20,20,19,.32);
+  --alpha-48: rgba(20,20,19,.48);
+  --alpha-64: rgba(20,20,19,.64);
+  --alpha-80: rgba(20,20,19,.80);
 }
 
-/* ============================================================
-   Layer 2: Color System — 语义别名（组件只用这一层）
-   Light 模式默认值
-   ============================================================ */
-:root {
-  /* ---- Border 边框 ---- */
-  --border-primary: var(--core-paper-300);
-  --border-primary-hover: var(--core-paper-400);
-  --border-primary-pressed: var(--core-paper-500);
-  --border-focus: var(--core-rose-500);
-  --border-error: var(--core-danger-500);
-  --border-success: var(--core-ok-500);
-  --border-warning: var(--core-warn-500);
-  --border-divider: var(--core-paper-200);
-
-  /* ---- Surface 表面 ---- */
-  --surface-base: var(--core-paper-00);        /* 页面底色 */
-  --surface-raised: #fffdfc;                   /* 卡片、弹层 */
-  --surface-sunken: var(--core-paper-100);     /* 输入框、凹陷区 */
-  --surface-hover: var(--core-paper-100);
-  --surface-pressed: var(--core-paper-200);
-  --surface-selected: var(--core-rose-50);
-  --surface-accent: var(--core-rose-50);
-  --surface-accent-hover: var(--core-rose-100);
-  --surface-error: var(--core-danger-50);
-  --surface-success: var(--core-ok-50);
-  --surface-warning: var(--core-warn-50);
-
-  /* ---- Action 动作（按钮填充）---- */
-  --action-primary: var(--core-ink-500);
-  --action-primary-hover: var(--core-ink-600);
-  --action-primary-pressed: var(--core-ink-700);
-  --action-primary-disabled: var(--core-paper-400);
-  --action-secondary: var(--core-paper-200);
-  --action-secondary-hover: var(--core-paper-300);
-  --action-secondary-pressed: var(--core-paper-400);
-  --action-tertiary: transparent;
-  --action-tertiary-hover: var(--core-paper-100);
-  --action-tertiary-pressed: var(--core-paper-200);
-  --action-ghost: transparent;
-  --action-ghost-hover: var(--core-paper-100);
-  --action-danger: var(--core-danger-500);
-  --action-danger-hover: var(--core-danger-600);
-  --action-danger-pressed: var(--core-danger-700);
-
-  /* ---- Text 文本 ---- */
-  --text-primary: var(--core-ink-500);
-  --text-secondary: var(--core-ink-400);
-  --text-muted: var(--core-ink-300);
-  --text-inverse: var(--core-paper-00);
-  --text-accent: var(--core-rose-600);
-  --text-accent-hover: var(--core-rose-700);
-  --text-error: var(--core-danger-600);
-  --text-success: var(--core-ok-600);
-  --text-warning: var(--core-warn-600);
-  --text-disabled: var(--core-ink-300);
-  --text-link: var(--core-rose-600);
-
-  /* ---- Icon 图标 ---- */
-  --icon-primary: var(--core-ink-400);
-  --icon-secondary: var(--core-ink-300);
-  --icon-muted: var(--core-ink-300);
-  --icon-accent: var(--core-rose-500);
-  --icon-error: var(--core-danger-500);
-  --icon-success: var(--core-ok-500);
-  --icon-warning: var(--core-warn-500);
-  --icon-disabled: var(--core-ink-300);
-
-  /* ---- Overlay 遮罩 ---- */
-  --overlay-xs: var(--core-alpha-700-16);
-  --overlay-sm: var(--core-alpha-700-24);
-  --overlay-md: var(--core-alpha-700-40);
-  --overlay-lg: var(--core-alpha-700-64);
-  --overlay-xl: var(--core-alpha-700-80);
-
-  /* ---- Shadow 阴影（仅 Light 用，Dark 用表面层级）---- */
-  --shadow-xs: 0 1px 2px rgba(46, 38, 44, 0.04);
-  --shadow-sm: 0 1px 3px rgba(46, 38, 44, 0.08), 0 1px 2px rgba(46, 38, 44, 0.06);
-  --shadow-md: 0 4px 6px rgba(46, 38, 44, 0.07), 0 2px 4px rgba(46, 38, 44, 0.06);
-  --shadow-lg: 0 10px 15px rgba(46, 38, 44, 0.1), 0 4px 6px rgba(46, 38, 44, 0.05);
-  --shadow-xl: 0 20px 25px rgba(46, 38, 44, 0.1), 0 10px 10px rgba(46, 38, 44, 0.04);
-  --shadow-focus: 0 0 0 3px var(--core-rose-100);
-}
-
-/* ============================================================
-   Dark 模式：夜间纸（不是纯黑，留住纸的暖度）
-   ============================================================ */
 :root[data-theme="dark"] {
-  /* ---- 纸：Dark 11 级 ---- */
-  --core-paper-00: #171315;
-  --core-paper-50: #1c1719;
-  --core-paper-100: #231c1f;
-  --core-paper-200: #2e2528;
-  --core-paper-300: #3d3236;
-  --core-paper-400: #4d4044;
-  --core-paper-500: #635358;
-  --core-paper-600: #7a686d;
-  --core-paper-700: #958085;
-  --core-paper-800: #b39c9f;
-  --core-paper-900: #d4babd;
-  --core-paper-1000: #f2e9e7;
+  --c-0:  #262521;
+  --c-50: #1f1e1b;
+  --c-100:#242320;
+  --c-150:#2b2a26;
+  --c-200:#35342f;
+  --c-300:#45443e;
+  --c-400:#6c6a62;
+  --c-500:#8e8b82;
+  --c-600:#a09d96;
+  --c-700:#c9c6bd;
+  --c-800:#e8e5dd;
+  --c-900:#faf9f5;
 
-  --core-ink-500: #f2e9e7;
-  --core-ink-1000: #faf1ee;
+  --accent-50: #33221b;
+  --accent-100:#452e24;
+  --accent-400:#d68a6c;
+  --accent-500:#e09a7d;
+  --accent-600:#efb49b;
+  --accent-on: #1f1e1b;
 
-  --core-rose-50: #3a1a1c;
-  --core-rose-100: #4a1f23;
-  --core-rose-200: #632a2f;
-  --core-rose-300: #853a40;
-  --core-rose-400: #b35a60;
-  --core-rose-500: #d9969d;
-  --core-rose-600: #e8aab0;
-  --core-rose-700: #f0c0c5;
-  --core-rose-800: #f7d5d8;
-  --core-rose-900: #faeaea;
-
-  --core-sakura-500: #cc838b;
-
-  /* ---- Border ---- */
-  --border-primary: var(--core-paper-700);
-  --border-primary-hover: var(--core-paper-600);
-  --border-primary-pressed: var(--core-paper-500);
-  --border-focus: var(--core-rose-400);
-  --border-error: var(--core-danger-400);
-  --border-success: var(--core-ok-400);
-  --border-warning: var(--core-warn-400);
-  --border-divider: var(--core-paper-800);
-
-  /* ---- Surface ---- */
-  --surface-base: var(--core-paper-00);
-  --surface-raised: var(--core-paper-100);
-  --surface-sunken: var(--core-paper-200);
-  --surface-hover: var(--core-paper-200);
-  --surface-pressed: var(--core-paper-300);
-  --surface-selected: var(--core-rose-900);
-  --surface-accent: var(--core-rose-900);
-  --surface-accent-hover: var(--core-rose-800);
-  --surface-error: var(--core-danger-900);
-  --surface-success: var(--core-ok-900);
-  --surface-warning: var(--core-warn-900);
-
-  /* ---- Action ---- */
-  --action-primary: var(--core-paper-900);
-  --action-primary-hover: var(--core-paper-800);
-  --action-primary-pressed: var(--core-paper-700);
-  --action-primary-disabled: var(--core-paper-600);
-  --action-secondary: var(--core-paper-200);
-  --action-secondary-hover: var(--core-paper-300);
-  --action-secondary-pressed: var(--core-paper-400);
-  --action-tertiary: transparent;
-  --action-tertiary-hover: var(--core-paper-100);
-  --action-tertiary-pressed: var(--core-paper-200);
-  --action-ghost: transparent;
-  --action-ghost-hover: var(--core-paper-100);
-  --action-danger: var(--core-danger-400);
-  --action-danger-hover: var(--core-danger-300);
-  --action-danger-pressed: var(--core-danger-200);
-
-  /* ---- Text ---- */
-  --text-primary: var(--core-paper-900);
-  --text-secondary: var(--core-paper-700);
-  --text-muted: var(--core-paper-600);
-  --text-inverse: var(--core-paper-00);
-  --text-accent: var(--core-rose-400);
-  --text-accent-hover: var(--core-rose-300);
-  --text-error: var(--core-danger-400);
-  --text-success: var(--core-ok-400);
-  --text-warning: var(--core-warn-400);
-  --text-disabled: var(--core-paper-500);
-  --text-link: var(--core-rose-400);
-
-  /* ---- Icon ---- */
-  --icon-primary: var(--core-paper-600);
-  --icon-secondary: var(--core-paper-500);
-  --icon-muted: var(--core-paper-500);
-  --icon-accent: var(--core-rose-400);
-  --icon-error: var(--core-danger-400);
-  --icon-success: var(--core-ok-400);
-  --icon-warning: var(--core-warn-400);
-  --icon-disabled: var(--core-paper-500);
-
-  /* ---- Overlay ---- */
-  --overlay-xs: rgba(0, 0, 0, 0.16);
-  --overlay-sm: rgba(0, 0, 0, 0.24);
-  --overlay-md: rgba(0, 0, 0, 0.40);
-  --overlay-lg: rgba(0, 0, 0, 0.64);
-  --overlay-xl: rgba(0, 0, 0, 0.80);
-
-  /* ---- Shadow（Dark 不用阴影表达层级，用表面色；仅焦点环保留）---- */
-  --shadow-focus: 0 0 0 3px var(--core-rose-900);
+  --ok:#7fbb95; --ok-bg:#1e2b22;
+  --warn:#d9ab6d; --warn-bg:#2c2618;
+  --danger:#e0857f; --danger-bg:#31201f;
+  --alpha-16: rgba(255,255,255,.16);
+  --alpha-32: rgba(255,255,255,.32);
+  --alpha-48: rgba(255,255,255,.48);
+  --alpha-64: rgba(255,255,255,.64);
+  --alpha-80: rgba(255,255,255,.80);
 }
 
-/* ============================================================
-   Spacing — 严格 4px 网格
-   ============================================================ */
+/* ===== Layer 2 · Color System（语义） ===== */
 :root {
-  /* 基础阶梯 */
-  --space-0: 0;
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-7: 32px;
-  --space-8: 40px;
-  --space-9: 48px;
-  --space-10: 64px;
-  --space-11: 80px;
-  --space-12: 96px;
+  /* 表面：靠色块，不靠描边 */
+  --surface-base: var(--c-50);
+  --surface-raised: var(--c-0);
+  --surface-sunken: var(--c-100);
+  --surface-hover: var(--c-100);
+  --surface-pressed: var(--c-150);
+  --surface-selected: var(--accent-50);
+  --surface-accent: var(--accent-50);
+  --surface-error: var(--danger-bg);
+  --surface-success: var(--ok-bg);
+  --surface-warning: var(--warn-bg);
 
-  /* 语义间距 */
-  --gutter: var(--space-4);        /* 页面边距 16px */
-  --gap-0: var(--space-0);
-  --gap-xs: var(--space-1);        /* 4px */
-  --gap-sm: var(--space-2);        /* 8px */
-  --gap-md: var(--space-3);        /* 12px */
-  --gap-lg: var(--space-4);        /* 16px */
-  --gap-xl: var(--space-6);        /* 24px */
-  --gap-2xl: var(--space-8);       /* 40px */
+  /* 边框：极淡发丝线，全周，不用粉色 */
+  --border-hairline: var(--c-200);
+  --border-divider: var(--c-200);
+  --border-strong: var(--c-300);
+  --border-focus: var(--accent-500);
+  --border-error: var(--danger);
 
-  /* 组件内边距 */
-  --pad-btn-sm: var(--space-2) var(--space-3);      /* 8x12 */
-  --pad-btn-md: var(--space-2) var(--space-4);      /* 8x16 */
-  --pad-btn-lg: var(--space-3) var(--space-5);      /* 12x20 */
-  --pad-input: var(--space-2) var(--space-4);       /* 8x16 */
-  --pad-card: var(--space-4);                       /* 16 */
-  --pad-sheet: var(--space-4) var(--space-4);       /* 16x16 */
-  --pad-list: var(--space-3) var(--space-4);        /* 12x16 */
+  /* 文字 */
+  --text-primary: var(--c-900);
+  --text-body: var(--c-700);
+  --text-secondary: var(--c-600);
+  --text-muted: var(--c-500);
+  --text-inverse: var(--c-50);
+  --text-accent: var(--accent-600);
+  --text-error: var(--danger);
+  --text-success: var(--ok);
+  --text-warning: var(--warn);
+
+  /* 图标 */
+  --icon-primary: var(--c-700);
+  --icon-secondary: var(--c-500);
+  --icon-muted: var(--c-400);
+  --icon-accent: var(--accent-500);
+
+  /* 动作 */
+  --action-primary: var(--c-900);
+  --action-primary-hover: var(--c-800);
+  --action-primary-pressed: var(--c-700);
+  --action-accent: var(--accent-500);
+  --action-accent-hover: var(--accent-600);
+  --action-secondary: var(--c-100);
+  --action-danger: var(--danger);
+
+  /* 遮罩 / 阴影（极淡） */
+  --overlay: var(--alpha-48);
+  --shadow-sm: 0 1px 2px rgba(20,20,19,.05);
+  --shadow-md: 0 4px 16px rgba(20,20,19,.08);
+  --shadow-focus: 0 0 0 3px var(--accent-100);
 }
 
-/* ============================================================
-   Radius — Tailwind 标准 + 嵌套公式（inner = outer - gap，最小 4px）
-   ============================================================ */
+/* ===== Spacing · 4px 网格 ===== */
 :root {
-  /* 基础阶梯 */
-  --radius-none: 0;
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
-  --radius-2xl: 16px;
-  --radius-3xl: 24px;
-  --radius-full: 9999px;
-
-  /* 组件级语义圆角 */
-  --r-control: var(--radius-lg);    /* 按钮、输入框、选择器 8px */
-  --r-card: var(--radius-xl);       /* 卡片 12px */
-  --r-panel: var(--radius-2xl);     /* 面板、对话框 16px */
-  --r-sheet: var(--radius-2xl);     /* 底部弹层 16px */
-  --r-avatar: var(--radius-full);   /* 头像圆形 */
-  --r-badge: var(--radius-full);    /* 徽章胶囊 */
-
-  /* 嵌套计算示例（供参考，CSS 中按需手动套用）:
-     card(12px) + gap(16px) → inner = 12-16 = -4 → 取 4px
-     sheet(16px) + gap(16px) → inner = 0 → 取 4px
-     panel(16px) + gap(12px) → inner = 4px ✓
-  */
+  --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:20px;
+  --s-6:24px; --s-7:32px; --s-8:40px; --s-9:48px;
+  --gutter: 20px;
+  --gap-xs:var(--s-1); --gap-sm:var(--s-2); --gap-md:var(--s-3);
+  --gap-lg:var(--s-4); --gap-xl:var(--s-6); --gap-2xl:var(--s-8);
 }
 
-/* ============================================================
-   Typography — Tailwind 标准阶梯 + 命名文本样式
-   ============================================================ */
+/* ===== Radius · 温和圆角（不全 pill） ===== */
 :root {
-  /* 字体族 */
-  --font-sans: -apple-system, BlinkMacSystemFont, "HarmonyOS Sans SC", "PingFang SC", "Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  --r-xs:6px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-xl:20px;
+  --r-sheet:22px; --r-full:999px;
+}
+
+/* ===== Typography · 标准阶梯 ===== */
+:root {
+  --font: -apple-system, BlinkMacSystemFont, "HarmonyOS Sans SC", "PingFang SC", "Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --fs-xs:12px; --fs-sm:14px; --fs-base:15px; --fs-md:16px;
+  --fs-lg:18px; --fs-xl:20px; --fs-2xl:24px; --fs-3xl:30px;
 
-  /* 标准阶梯：尺寸 / 行高 */
-  --text-xs: 12px;    --leading-xs: 16px;
-  --text-sm: 14px;    --leading-sm: 20px;
-  --text-base: 16px;  --leading-base: 24px;
-  --text-lg: 18px;    --leading-lg: 28px;
-  --text-xl: 20px;    --leading-xl: 28px;
-  --text-2xl: 24px;   --leading-2xl: 32px;
-  --text-3xl: 30px;   --leading-3xl: 36px;
-  --text-4xl: 36px;   --leading-4xl: 40px;
-  --text-5xl: 48px;   --leading-5xl: 1;
-  --text-6xl: 60px;   --leading-6xl: 1;
+  --style-h1: 600 30px/1.2 var(--font);
+  --style-h2: 600 24px/1.3 var(--font);
+  --style-h3: 600 20px/1.35 var(--font);
+  --style-h4: 600 18px/1.4 var(--font);
+  --style-h5: 600 16px/1.4 var(--font);
+  --style-title: 500 16px/1.45 var(--font);
+  --style-body: 400 15px/1.62 var(--font);
+  --style-body-strong: 500 15px/1.55 var(--font);
+  --style-caption: 500 12px/1.5 var(--font);
+  --style-caption-2: 400 12px/1.5 var(--font);
+  --style-btn: 500 15px/1.4 var(--font);
+  --style-btn-sm: 500 13px/1.4 var(--font);
 
-  /* 命名文本样式（对应 design-taste-frontend 规范）
-     用法：font: var(--style-h1); 或拆分 font-size/line-height/font-family/font-weight
-  */
-  --style-h1: 600 var(--text-5xl) / var(--leading-5xl) var(--font-sans);
-  --style-h2: 600 var(--text-4xl) / var(--leading-4xl) var(--font-sans);
-  --style-h3: 600 var(--text-3xl) / var(--leading-3xl) var(--font-sans);
-  --style-h4: 600 var(--text-2xl) / var(--leading-2xl) var(--font-sans);
-  --style-h5: 600 var(--text-xl) / var(--leading-xl) var(--font-sans);
-  --style-h6: 600 var(--text-lg) / var(--leading-lg) var(--font-sans);
-
-  --style-title1: 500 var(--text-xl) / var(--leading-xl) var(--font-sans);
-  --style-title2: 500 var(--text-lg) / var(--leading-lg) var(--font-sans);
-  --style-title3: 500 var(--text-base) / var(--leading-base) var(--font-sans);
-  --style-title4: 500 var(--text-sm) / var(--leading-sm) var(--font-sans);
-  --style-title5: 500 var(--text-xs) / var(--leading-xs) var(--font-sans);
-
-  --style-body1: 600 var(--text-base) / var(--leading-base) var(--font-sans);
-  --style-body2: 500 var(--text-base) / var(--leading-base) var(--font-sans);
-  --style-body3: 400 var(--text-base) / var(--leading-base) var(--font-sans);
-  --style-body4: 600 var(--text-sm) / var(--leading-sm) var(--font-sans);
-  --style-body5: 500 var(--text-sm) / var(--leading-sm) var(--font-sans);
-  --style-body6: 400 var(--text-sm) / var(--leading-sm) var(--font-sans);
-
-  --style-btn-lg: 600 var(--text-lg) / var(--leading-lg) var(--font-sans);
-  --style-btn-md: 600 var(--text-base) / var(--leading-base) var(--font-sans);
-  --style-btn-sm: 600 var(--text-sm) / var(--leading-sm) var(--font-sans);
-  --style-btn-xs: 600 var(--text-xs) / var(--leading-xs) var(--font-sans);
-
-  --style-caption1: 500 var(--text-sm) / var(--leading-sm) var(--font-sans);
-  --style-caption2: 400 var(--text-sm) / var(--leading-sm) var(--font-sans);
-  --style-caption3: 600 var(--text-xs) / var(--leading-xs) var(--font-sans);
-  --style-caption4: 500 var(--text-xs) / var(--leading-xs) var(--font-sans);
-  --style-caption5: 400 var(--text-xs) / var(--leading-xs) var(--font-sans);
-
-  /* 阅读字号（设置可调） */
-  --reading-size: var(--text-base);
-  --reading-line: var(--leading-base);
+  --reading-size: 16px;
+  --reading-line: 1.7;
 }
 
-/* ============================================================
-   Motion — 单一缓动曲线，仅色彩/不透明度/变换
-   ============================================================ */
+/* ===== Motion ===== */
 :root {
-  --ease-standard: cubic-bezier(.22, 1, .36, 1);
-  --ease-decelerate: cubic-bezier(0, 0, .2, 1);
-  --duration-fast: 120ms;
-  --duration-mid: 240ms;
-  --duration-slow: 360ms;
-
-  /* 标准过渡组合（禁止 transition-all） */
-  --transition-colors: color var(--duration-fast) var(--ease-standard),
-                       background-color var(--duration-fast) var(--ease-standard),
-                       border-color var(--duration-fast) var(--ease-standard),
-                       fill var(--duration-fast) var(--ease-standard),
-                       stroke var(--duration-fast) var(--ease-standard);
-  --transition-opacity: opacity var(--duration-fast) var(--ease-standard);
-  --transition-transform: transform var(--duration-fast) var(--ease-standard);
-  --transition-shadow: box-shadow var(--duration-mid) var(--ease-standard);
-
-  /* 组件级过渡 */
-  --transition-btn: var(--transition-colors), var(--transition-transform);
-  --transition-input: var(--transition-colors), var(--transition-shadow);
-  --transition-sheet: transform var(--duration-mid) var(--ease-decelerate), opacity var(--duration-mid) var(--ease-standard);
-  --transition-card: var(--transition-shadow), var(--transition-transform);
+  --ease: cubic-bezier(.22,1,.36,1);
+  --t-fast: 140ms;
+  --t-mid: 260ms;
+  --t-colors: color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+  --t-transform: transform var(--t-fast) var(--ease);
 }
 
-/* ============================================================
-   Layout 结构常量
-   ============================================================ */
+/* ===== Layout ===== */
 :root {
-  --tabbar-h: 56px;
-  --appbar-h: 48px;
-  --composer-min-h: 52px;
-  --composer-max-h: 140px;
-  --sheet-handle-w: 36px;
-  --sheet-handle-h: 5px;
-  --avatar-sm: 32px;
-  --avatar-md: 40px;
-  --avatar-lg: 56px;
-  --avatar-xl: 72px;
-  --icon-sm: 16px;
-  --icon-md: 20px;
-  --icon-lg: 24px;
-  --icon-xl: 28px;
+  --sa-t: env(safe-area-inset-top,0px);
+  --sa-b: env(safe-area-inset-bottom,0px);
+  --tabbar-h: 60px;
+  --appbar-h: 52px;
+  --z-appbar:100; --z-composer:110; --z-toast:200; --z-sheet:300;
+  --z-modal:400; --z-lightbox:500; --z-boot:600;
 }
 
-/* ============================================================
-   Z-Index 层级
-   ============================================================ */
+/* ===== 兼容别名（旧 JS / 内联样式仍在用，集中映射，避免散落硬编码） ===== */
 :root {
-  --z-base: 1;
-  --z-sticky: 10;
-  --z-appbar: 100;
-  --z-composer: 110;
-  --z-toast: 200;
-  --z-sheet: 300;
-  --z-modal: 400;
-  --z-lightbox: 500;
-  --z-boot: 600;
+  --border-primary: var(--border-hairline);
+  --r-card: var(--r-lg);
+  --r-control: var(--r-md);
+  --shadow-lg: var(--shadow-md);
+  --transition-card: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+  --style-body4: 500 14px/1.5 var(--font);
 }

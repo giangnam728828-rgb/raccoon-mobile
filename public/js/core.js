@@ -149,7 +149,7 @@
     $('confirm-text').textContent = text;
     const ok = $('confirm-ok');
     ok.textContent = o.okText || '确定';
-    ok.className = 'btn btn-block ' + (o.danger ? 'btn-rose' : 'btn-primary');
+    ok.className = 'btn btn-block ' + (o.danger ? 'btn-danger' : 'btn-primary');
     $('confirm-cancel').textContent = o.cancelText || '取消';
     openSheet('sheet-confirm');
     return new Promise((resolve) => {

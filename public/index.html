@@ -138,8 +138,8 @@
     </div>
 
     <div class="login-alt">
-      <button id="btn-token-toggle" class="btn-ghost" type="button">
-        <svg class="i i-md"><use href="#i-key"/></svg>
+      <button id="btn-token-toggle" class="btn btn-ghost btn-md" type="button">
+        <svg class="i i-sm"><use href="#i-key"/></svg>
         <span>使用 Token 登录</span>
       </button>
     </div>
@@ -158,7 +158,7 @@
     <footer class="login-foot">
       <span id="login-mode" class="mono">自动 · 直连官方</span>
       <span class="sep">·</span>
-      <button id="btn-diag" class="btn-ghost" type="button" style="min-height:36px">诊断</button>
+      <button id="btn-diag" class="btn btn-ghost btn-sm" type="button">诊断</button>
     </footer>
   </div>
 
@@ -539,7 +539,7 @@
     </div>
     <div class="sheet-body" id="prompt-list"></div>
     <div class="sheet-actions">
-      <button id="prompt-add" class="btn btn-md btn-block" type="button">
+      <button id="prompt-add" class="btn btn-secondary btn-md btn-block" type="button">
         <svg class="i i-sm"><use href="#i-plus"/></svg>新建提示词
       </button>
     </div>
@@ -622,8 +622,8 @@
         <span class="lbl">最近错误</span><span class="val" id="diag-err">—</span>
       </div>
       <div class="diag-actions">
-        <button id="diag-retest" class="btn btn-md btn-block" type="button">重新检测</button>
-        <button id="diag-proxy" class="btn btn-md btn-block" type="button">改用代理</button>
+        <button id="diag-retest" class="btn btn-secondary btn-md btn-block" type="button">重新检测</button>
+        <button id="diag-proxy" class="btn btn-secondary btn-md btn-block" type="button">改用代理</button>
         <button id="diag-direct" class="btn btn-secondary btn-md btn-block" type="button">恢复直连</button>
       </div>
       <p class="sheet-tip" style="margin-top:var(--gap-lg)">直连模式下由 App 自身完成人机验证与短信登录，手机里不需要再跑任何服务。</p>
@@ -663,7 +663,7 @@
       </div>
     </div>
     <div class="sheet-body" style="padding:0">
-      <div id="terminal" style="height:100%;font-family:var(--font-mono);font-size:13px;line-height:1.6;background:var(--core-paper-1000);color:var(--core-paper-00);padding:var(--gap-md);overflow:auto"></div>
+      <div id="terminal" style="height:100%;font-family:var(--font-mono);font-size:13px;line-height:1.6;background:var(--c-900);color:var(--c-50);padding:var(--s-4);overflow:auto"></div>
     </div>
   </div>
 </div>
@@ -694,7 +694,7 @@
       <span class="t" id="editor-title">代码编辑器</span>
       <div class="appbar-actions">
         <button id="editor-save" class="btn btn-primary btn-sm" type="button"><svg class="i i-sm"><use href="#i-save"/></svg>保存</button>
-        <button id="editor-run" class="btn btn-rose btn-sm" type="button"><svg class="i i-sm"><use href="#i-play"/></svg>运行</button>
+        <button id="editor-run" class="btn btn-accent btn-sm" type="button"><svg class="i i-sm"><use href="#i-play"/></svg>运行</button>
         <button class="icon-btn sm" data-close type="button" aria-label="关闭"><svg class="i"><use href="#i-close"/></svg></button>
       </div>
     </div>
