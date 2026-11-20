@@ -1024,6 +1024,7 @@
     // --- 我的 / 设置 ---
     RC.bindMe();
     RC.bindPrompts();
+    RC.bindModules && RC.bindModules();
     $('system-save').addEventListener('click', saveSystem);
 
     // --- 诊断 ---

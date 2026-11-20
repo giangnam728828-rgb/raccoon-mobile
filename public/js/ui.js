@@ -1,5 +1,5 @@
 /* ============================================================
-   壳：视图切换 / 标签页 / 主题 / 弹层装配
+   小浣熊 v4.0 · 壳：视图切换 / 标签页 / 主题 / 弹层装配
    ============================================================ */
 (function (global) {
   'use strict';
@@ -104,8 +104,6 @@
   }
 
   // ---------- 弹层装配 ----------
-  // 动态创建的弹层也会调用本函数，所以必须幂等：
-  // 已经绑过的元素打标记，避免同一个按钮被绑定多次。
   function bindOnce(el, key) {
     if (!el) return false;
     if (el.dataset[`bound${key}`]) return false;
@@ -114,8 +112,8 @@
   }
 
   function bindSheets() {
-    // 点遮罩关闭
-    RC.$$('.sheet-scrim').forEach((scrim) => {
+    // 点遮罩关闭 - Sheet
+    $$('.sheet-scrim').forEach((scrim) => {
       if (!bindOnce(scrim, 'scrim')) return;
       scrim.addEventListener('click', () => {
         const sheet = scrim.parentElement;
@@ -123,9 +121,15 @@
       });
     });
 
+    // 点遮罩关闭 - Confirm Dialog
+    $$('.confirm-backdrop').forEach((backdrop) => {
+      if (!bindOnce(backdrop, 'cfbackdrop')) return;
+      backdrop.addEventListener('click', () => RC.settleConfirm(false));
+    });
+
     // 关闭按钮
-    RC.$$('[data-close]').forEach((btn) => {
-      if (btn.classList.contains('sheet-scrim')) return;
+    $$('[data-close]').forEach((btn) => {
+      if (btn.classList.contains('sheet-scrim') || btn.classList.contains('confirm-backdrop')) return;
       if (!bindOnce(btn, 'close')) return;
       btn.addEventListener('click', () => {
         const sheet = btn.closest('.sheet');
@@ -133,7 +137,7 @@
       });
     });
 
-    // 确认框
+    // 确认框按钮
     const ok = $('confirm-ok');
     if (ok && bindOnce(ok, 'ok')) {
       ok.addEventListener('click', () => RC.settleConfirm(true));
@@ -141,10 +145,6 @@
     const cancel = $('confirm-cancel');
     if (cancel && bindOnce(cancel, 'cancel')) {
       cancel.addEventListener('click', () => RC.settleConfirm(false));
-    }
-    const cfScrim = document.querySelector('#sheet-confirm .sheet-scrim');
-    if (cfScrim && bindOnce(cfScrim, 'cfscrim')) {
-      cfScrim.addEventListener('click', () => RC.settleConfirm(false));
     }
   }
 

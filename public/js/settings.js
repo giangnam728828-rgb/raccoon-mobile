@@ -1,5 +1,5 @@
 /* ============================================================
-   设置 / 模型 / 思考强度 / 我的
+   小浣熊 v4.0 · 设置 / 模型 / 思考强度 / 我的
    设置用「注册表」组织：新增一项只需往 SETTINGS 里加一条
    ============================================================ */
 (function (global) {
@@ -42,7 +42,7 @@
       },
     },
     {
-      id: 'font', group: '外观', label: '正文字号', icon: 'pen', type: 'cycle',
+      id: 'font', group: '外观', label: '正文字号', icon: 'type', type: 'cycle',
       value: () => RC.fontStepName(),
       cycle: () => RC.cycleFontScale(),
     },
@@ -89,7 +89,7 @@
       box.appendChild(label);
 
       SETTINGS.filter((x) => x.group === g).forEach((it) => {
-        const row = el('button', 'row');
+        const row = el('button', 'setting-row');
         row.type = 'button';
         row.appendChild(icon(it.icon));
         row.appendChild(el('span', 'lbl', it.label));
@@ -108,7 +108,8 @@
           row.appendChild(sw);
         } else {
           row.appendChild(el('span', 'val', it.value()));
-          row.appendChild(icon('right', 'sm chev'));
+          row.appendChild(icon('chevron-right', 'sm chevron'));
+          row.classList.add('cycle');
           row.addEventListener('click', () => {
             if (it.cycle) {
               it.cycle();
@@ -125,13 +126,13 @@
     about.textContent = '关于';
     box.appendChild(about);
 
-    const ver = el('div', 'row');
+    const ver = el('div', 'setting-row');
     ver.appendChild(icon('info'));
     ver.appendChild(el('span', 'lbl', '版本'));
     ver.appendChild(el('span', 'val mono', RC.version));
     box.appendChild(ver);
 
-    const reset = el('button', 'row');
+    const reset = el('button', 'setting-row');
     reset.type = 'button';
     reset.appendChild(icon('refresh'));
     reset.appendChild(el('span', 'lbl', '恢复默认设置'));
@@ -179,33 +180,37 @@
     Array.from(groups.keys())
       .sort((a, b) => order.indexOf(a) - order.indexOf(b))
       .forEach((g) => {
-        const label = el('div', 'section-label');
+        const label = el('div', 'model-group-label');
         label.textContent = g;
         box.appendChild(label);
 
         groups.get(g).forEach((m) => {
-          const row = el('div', 'opt' + (m.id === S.prefs.model ? ' on' : ''));
+          const row = el('div', 'model-option' + (m.id === S.prefs.model ? ' on' : ''));
           row.setAttribute('role', 'button');
           row.tabIndex = 0;
 
-          const main = el('div', 'opt-main');
-          const nm = el('div', 'opt-name');
-          nm.appendChild(document.createTextNode(m.name));
-          if (m.supportsReasoning) nm.appendChild(icon('bolt'));
-          main.appendChild(nm);
+          const iconEl = el('span', 'icon');
+          iconEl.appendChild(icon('spark'));
+          row.appendChild(iconEl);
 
-          const tags = el('div', 'opt-tags');
+          const info = el('div', 'info');
+          const name = el('div', 'name');
+          name.textContent = m.name;
+          if (m.supportsReasoning) name.appendChild(icon('bolt'));
+          info.appendChild(name);
+
+          const tags = el('div', 'tags');
           if (m.contextLength) {
             tags.appendChild(el('span', 'tag', RC.fmtContext(m.contextLength) + ' 上下文'));
           }
           if (m.supportsImages) tags.appendChild(el('span', 'tag', '识图'));
           if (m.supportsReasoning) tags.appendChild(el('span', 'tag', '推理'));
           if (!tags.childNodes.length) tags.appendChild(el('span', 'tag', '对话'));
-          main.appendChild(tags);
-          row.appendChild(main);
+          info.appendChild(tags);
+          row.appendChild(info);
 
           if (m.id === S.prefs.model) {
-            const c = el('span', 'opt-check');
+            const c = el('span', 'check');
             c.appendChild(icon('check'));
             row.appendChild(c);
           }
@@ -244,23 +249,23 @@
       return;
     }
 
-    const note = el('p', 'sheet-tip', '推理越深，回答越周全，但等待也更久。');
+    const note = el('p', 'effort-note', '推理越深，回答越周全，但等待也更久。');
     box.appendChild(note);
 
     EFFORTS.forEach((e) => {
-      const row = el('div', 'opt' + (e.id === S.prefs.effort ? ' on' : ''));
+      const row = el('div', 'effort-option' + (e.id === S.prefs.effort ? ' on' : ''));
       row.setAttribute('role', 'button');
       row.tabIndex = 0;
 
-      const main = el('div', 'opt-main');
-      const nm = el('div', 'opt-name');
-      nm.textContent = e.name;
-      main.appendChild(nm);
-      main.appendChild(el('div', 'opt-desc', e.desc));
-      row.appendChild(main);
+      const info = el('div', 'info');
+      const name = el('div', 'name');
+      name.textContent = e.name;
+      info.appendChild(name);
+      info.appendChild(el('div', 'desc', e.desc));
+      row.appendChild(info);
 
       if (e.id === S.prefs.effort) {
-        const c = el('span', 'opt-check');
+        const c = el('span', 'check');
         c.appendChild(icon('check'));
         row.appendChild(c);
       }
@@ -352,10 +357,10 @@
     set('set-storage', RC.fmtBytes(RC.storageBytes()));
     set('set-backup', RC.isDirect() ? '需代理' : '可用');
     set('set-channel', RC.channelLabel());
-    set('build-tag', '小浣熊移动端 v' + RC.version);
+    set('set-version', 'v' + RC.version);
 
     const dot = $('status-dot');
-    if (dot) dot.classList.toggle('on', !!S.loggedIn);
+    if (dot) dot.classList.toggle('connected', !!S.loggedIn);
 
     const chip = $('points');
     if (chip) chip.textContent = String(S.points == null ? '—' : S.points);
@@ -436,6 +441,29 @@
     });
     open('row-backup', () => RC.syncUpload());
     open('row-restore', () => RC.syncDownload());
+    open('row-files', () => {
+      RC.fmInit && RC.fmInit();
+      RC.openSheet('sheet-files');
+    });
+    open('row-terminal', () => {
+      RC.openSheet('sheet-terminal');
+    });
+    open('row-git', () => {
+      RC.gitLoad && RC.gitLoad();
+      RC.openSheet('sheet-git');
+    });
+    open('row-about', () => {
+      RC.toast('小浣熊移动端 v' + RC.version);
+    });
+    open('row-privacy', () => {
+      global.open('https://example.com/privacy', '_blank');
+    });
+    open('row-terms', () => {
+      global.open('https://example.com/terms', '_blank');
+    });
+    open('row-github', () => {
+      global.open('https://github.com/giangnam728828-rgb/raccoon-mobile', '_blank');
+    });
     open('row-logout', async () => {
       const ok = await RC.confirmBox('退出登录？本地对话记录会保留。', {
         okText: '退出', danger: true,

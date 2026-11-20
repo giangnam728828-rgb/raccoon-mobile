@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="小浣熊">
 <meta name="format-detection" content="telephone=no">
-<meta name="description" content="小浣熊移动端：多模型对话、深度思考、图片与文件问答。">
+<meta name="description" content="小浣熊移动端：多模型对话、深度思考、图片与文件问答、代码运行、文件管理。">
 <title>小浣熊</title>
 <link rel="icon" href="/img/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
@@ -20,7 +20,7 @@
 <body>
 
 <!-- ============================================================
-     图标集：单一套系，1.6 描边
+     图标集：单一套系，1.5 描边
      ============================================================ -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5.8h16v10.4H9.6L4 20.2z"/></symbol>
@@ -60,25 +60,41 @@
   <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M3.6 12.4 6 5.4h12l2.4 7v6.2H3.6z"/><path d="M3.6 12.4h4.7l1 2.3h5.4l1-2.3h4.7"/></symbol>
   <symbol id="i-type" viewBox="0 0 24 24"><path d="M4.6 7.2V5.4h9.6v1.8M9.4 18.6V5.4M14.4 18.6h5.4M17.1 18.6v-8.4"/></symbol>
   <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8.2" cy="15.8" r="3.6"/><path d="M10.8 13.2 19 5M15.6 8.4l2.2 2.2M17.8 6.2l2.2 2.2"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M4.5 5.5h15a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2z"/><path d="M8.5 5.5V3.5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-file-code" viewBox="0 0 24 24"><path d="M6.3 3.6h7l4.7 4.7v12.1H6.3z"/><path d="M9 12l-2 2 2 2M15 12l2 2-2 2"/></symbol>
+  <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 12h10M7 16h6"/></symbol>
+  <symbol id="i-git" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="M6 8v8M18 16v-8M8 6h10"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5v14l10-7z"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 5v14M7 12l5 5 5-5"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 19v-14M7 12l5-5 5 5"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="9" width="14" height="11" rx="2"/><path d="M12 9V6a3 3 0 0 1 6 0v3"/></symbol>
+  <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="9" width="14" height="11" rx="2"/><path d="M12 9V6a3 3 0 0 1 6 0v3"/><path d="M9 9v9h6V9"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M12 4.5a8.5 8.5 0 0 1 7.8 6.5 8.5 8.5 0 0 1-7.8 6.5 8.5 8.5 0 0 1-7.8-6.5A8.5 8.5 0 0 1 12 4.5z"/><circle cx="12" cy="11" r="2.5"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M12 4.5a8.5 8.5 0 0 1 7.8 6.5 8.5 8.5 0 0 1-7.8 6.5 8.5 8.5 0 0 1-7.8-6.5A8.5 8.5 0 0 1 12 4.5z"/><path d="M4 4l16 16"/><circle cx="12" cy="11" r="2.5" opacity="0.3"/></symbol>
+  <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-minimize" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-maximize" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></symbol>
+  <symbol id="i-github" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.866-.013-1.7-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></symbol>
 </svg>
 
 <!-- ============================================================
-     启动
+     启动屏
      ============================================================ -->
 <div id="boot">
-  <div class="boot-art"><img src="/img/brand-sm.jpg" alt="" width="86" height="86"></div>
+  <div class="boot-art"><img src="/img/brand-sm.jpg" alt="" width="88" height="88"></div>
   <p class="boot-name">小浣熊</p>
 </div>
 
 <!-- ============================================================
-     登录
+     登录页
      ============================================================ -->
 <section id="login" class="view">
   <div class="login-scroll">
     <header class="login-brand">
-      <div class="login-art"><img src="/img/brand-sm.jpg" alt="" width="92" height="92"></div>
+      <div class="login-art"><img src="/img/brand-sm.jpg" alt="" width="100" height="100"></div>
       <h1>小浣熊</h1>
-      <p>能搞定工作的 AI 助手</p>
+      <p class="tagline">你的 AI 工作台</p>
     </header>
 
     <div class="login-form">
@@ -100,23 +116,24 @@
         </div>
       </div>
 
-      <button id="btn-login" class="btn btn-primary btn-block" type="button">登录 / 注册</button>
+      <button id="btn-login" class="btn btn-primary btn-md btn-block" type="button">登录 / 注册</button>
       <p class="login-hint">未注册的手机号将自动创建账号</p>
     </div>
 
     <div class="login-alt">
-      <button id="btn-token-toggle" class="btn-text" type="button">
-        <svg class="i" style="width:18px;height:18px"><use href="#i-key"/></svg>使用 Token 登录
+      <button id="btn-token-toggle" class="btn-ghost" type="button">
+        <svg class="i i-md"><use href="#i-key"/></svg>
+        <span>使用 Token 登录</span>
       </button>
     </div>
 
-    <div id="token-panel" class="hidden" style="margin-top:16px">
+    <div id="token-panel" class="hidden">
       <div class="field">
         <label for="token-input">访问令牌</label>
         <textarea id="token-input" class="input" placeholder="粘贴 access_token（JWT，可带 Bearer 前缀）"
-                  spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+                  spellcheck="false" autocapitalize="off" autocorrect="off" rows="3"></textarea>
       </div>
-      <button id="btn-token-go" class="btn btn-primary btn-block" type="button" style="margin-top:12px">登录</button>
+      <button id="btn-token-go" class="btn btn-primary btn-md btn-block" type="button">登录</button>
     </div>
 
     <p id="login-msg" class="login-msg hidden" role="alert"></p>
@@ -124,7 +141,7 @@
     <footer class="login-foot">
       <span id="login-mode" class="mono">自动 · 直连官方</span>
       <span class="sep">·</span>
-      <button id="btn-diag" class="btn-text" type="button" style="min-height:30px;font-size:11.5px">诊断</button>
+      <button id="btn-diag" class="btn-ghost" type="button" style="min-height:36px">诊断</button>
     </footer>
   </div>
 
@@ -142,12 +159,12 @@
     <header class="appbar" id="chat-appbar">
       <div class="appbar-row">
         <div class="appbar-title">
-          <span class="dot" id="status-dot" aria-hidden="true"></span>
+          <span class="status-dot" id="status-dot" aria-hidden="true"></span>
           <span class="t" id="chat-title">新对话</span>
         </div>
         <div class="appbar-actions">
           <button id="btn-points" class="pill" type="button" aria-label="剩余积分">
-            <svg class="i"><use href="#i-coin"/></svg><span id="points" class="tnum">—</span>
+            <svg class="i"><use href="#i-coin"/></svg><span id="points" class="lbl tnum">—</span>
           </button>
           <button id="btn-new" class="icon-btn" type="button" aria-label="新建对话">
             <svg class="i"><use href="#i-edit"/></svg>
@@ -156,7 +173,7 @@
       </div>
       <div class="appbar-row sub">
         <button id="btn-model" class="pill model" type="button">
-          <span id="model-name" class="lbl">默认模型</span>
+          <span id="model-name" class="lbl">选择模型</span>
           <svg class="i"><use href="#i-down"/></svg>
         </button>
         <button id="btn-effort" class="pill" type="button">
@@ -168,8 +185,8 @@
     <main id="thread" class="thread" role="log" aria-live="polite"></main>
 
     <button id="jump-bottom" class="jump-bottom hidden" type="button" aria-label="回到底部">
-      <svg class="i sm"><use href="#i-down"/></svg>
-      <span class="n hidden" id="new-count">0</span>
+      <svg class="i i-sm"><use href="#i-down"/></svg>
+      <span class="badge hidden" id="new-count">0</span>
     </button>
 
     <div class="composer">
@@ -178,9 +195,9 @@
         <div class="composer-top">
           <textarea id="input" rows="1" placeholder="发消息…" enterkeyhint="send"
                     aria-label="消息输入框"></textarea>
-          <button id="btn-send" class="send" type="button" disabled aria-label="发送">
-            <svg class="i ico-send"><use href="#i-send"/></svg>
-            <svg class="i ico-stop hidden"><use href="#i-stop"/></svg>
+          <button id="btn-send" class="send-btn" type="button" disabled aria-label="发送">
+            <svg class="i i-md ico-send"><use href="#i-send"/></svg>
+            <svg class="i i-md ico-stop"><use href="#i-stop"/></svg>
           </button>
         </div>
         <div class="composer-tools">
@@ -190,8 +207,11 @@
           <button id="btn-voice" class="icon-btn sm" type="button" aria-label="语音输入">
             <svg class="i"><use href="#i-mic"/></svg>
           </button>
+          <button id="btn-file" class="icon-btn sm" type="button" aria-label="文件管理">
+            <svg class="i"><use href="#i-folder"/></svg>
+          </button>
           <div class="spacer"></div>
-          <button id="btn-think" class="tool-label hidden" type="button" tabindex="-1" aria-hidden="true">
+          <button id="btn-think" class="think-badge hidden" type="button" tabindex="-1" aria-hidden="true">
             <svg class="i"><use href="#i-spark"/></svg><span id="think-label">思考关</span>
           </button>
         </div>
@@ -211,8 +231,8 @@
         </div>
       </div>
       <div class="appbar-row sub">
-        <div class="search">
-          <svg class="i sm"><use href="#i-search"/></svg>
+        <div class="search-bar">
+          <svg class="i i-sm"><use href="#i-search"/></svg>
           <input id="history-search" type="search" placeholder="搜索标题或内容" enterkeyhint="search">
         </div>
       </div>
@@ -234,7 +254,9 @@
     </header>
     <main class="scroll-list">
       <div class="profile">
-        <div class="avatar"><img src="/img/brand-sm.jpg" alt="" width="54" height="54"></div>
+        <div class="avatar-wrap">
+          <div class="avatar avatar-lg"><img src="/img/brand-sm.jpg" alt="" width="56" height="56"></div>
+        </div>
         <div class="profile-info">
           <div class="nm" id="me-name">小浣熊</div>
           <div class="sub" id="me-phone">—</div>
@@ -249,108 +271,144 @@
 
       <div class="group">
         <div class="group-label">对话</div>
-        <button class="row" id="row-model" type="button">
-          <svg class="i"><use href="#i-spark"/></svg>
+        <button class="setting-row" id="row-model" type="button">
+          <svg class="i icon"><use href="#i-spark"/></svg>
           <span class="lbl">默认模型</span>
           <span class="val" id="set-model">—</span>
-          <svg class="i chev"><use href="#i-right"/></svg>
+          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
         </button>
-        <button class="row" id="row-effort" type="button">
-          <svg class="i"><use href="#i-bolt"/></svg>
+        <button class="setting-row" id="row-effort" type="button">
+          <svg class="i icon"><use href="#i-bolt"/></svg>
           <span class="lbl">深度思考</span>
           <span class="val" id="set-effort">—</span>
-          <svg class="i chev"><use href="#i-right"/></svg>
+          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
         </button>
-        <button class="row" id="row-system" type="button">
-          <svg class="i"><use href="#i-pen"/></svg>
+        <button class="setting-row" id="row-system" type="button">
+          <svg class="i icon"><use href="#i-pen"/></svg>
           <span class="lbl">系统提示词</span>
           <span class="val" id="set-system">未设置</span>
-          <svg class="i chev"><use href="#i-right"/></svg>
+          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
         </button>
-        <button class="row" id="row-prompts" type="button">
-          <svg class="i"><use href="#i-inbox"/></svg>
+        <button class="setting-row" id="row-prompts" type="button">
+          <svg class="i icon"><use href="#i-inbox"/></svg>
           <span class="lbl">提示词库</span>
           <span class="val" id="set-prompts">—</span>
-          <svg class="i chev"><use href="#i-right"/></svg>
+          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
         </button>
       </div>
 
       <div class="group">
         <div class="group-label">外观</div>
-        <button class="row" id="row-theme" type="button">
-          <svg class="i"><use href="#i-palette"/></svg>
+        <button class="setting-row" id="row-theme" type="button">
+          <svg class="i icon"><use href="#i-palette"/></svg>
           <span class="lbl">主题</span>
           <span class="val" id="set-theme">跟随系统</span>
-          <svg class="i chev"><use href="#i-right"/></svg>
+          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
         </button>
-        <button class="row" id="row-fontsize" type="button">
-          <svg class="i"><use href="#i-type"/></svg>
+        <button class="setting-row" id="row-fontsize" type="button">
+          <svg class="i icon"><use href="#i-type"/></svg>
           <span class="lbl">正文字号</span>
           <span class="val" id="set-fontsize">标准</span>
-          <svg class="i chev"><use href="#i-right"/></svg>
+          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
         </button>
       </div>
 
       <div class="group">
         <div class="group-label">数据</div>
-        <button class="row" id="row-export" type="button">
-          <svg class="i"><use href="#i-share"/></svg>
+        <button class="setting-row" id="row-export" type="button">
+          <svg class="i icon"><use href="#i-share"/></svg>
           <span class="lbl">导出当前对话</span>
           <span class="val" id="set-export">Markdown</span>
-          <svg class="i chev"><use href="#i-right"/></svg>
+          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
         </button>
-        <button class="row" id="row-storage" type="button">
-          <svg class="i"><use href="#i-database"/></svg>
+        <button class="setting-row" id="row-storage" type="button">
+          <svg class="i icon"><use href="#i-database"/></svg>
           <span class="lbl">本地占用</span>
           <span class="val" id="set-storage">—</span>
-          <svg class="i chev"><use href="#i-right"/></svg>
+          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
         </button>
-        <button class="row" id="row-backup" type="button">
-          <svg class="i"><use href="#i-share"/></svg>
+        <button class="setting-row" id="row-backup" type="button">
+          <svg class="i icon"><use href="#i-upload"/></svg>
           <span class="lbl">备份到服务端</span>
           <span class="val" id="set-backup">未备份</span>
-          <svg class="i chev"><use href="#i-right"/></svg>
+          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
         </button>
-        <button class="row" id="row-restore" type="button">
-          <svg class="i"><use href="#i-refresh"/></svg>
+        <button class="setting-row" id="row-restore" type="button">
+          <svg class="i icon"><use href="#i-download"/></svg>
           <span class="lbl">从服务端恢复</span>
-          <svg class="i chev"><use href="#i-right"/></svg>
+          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
+        </button>
+        <button class="setting-row" id="row-files" type="button">
+          <svg class="i icon"><use href="#i-folder"/></svg>
+          <span class="lbl">文件管理</span>
+          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
+        </button>
+        <button class="setting-row" id="row-terminal" type="button">
+          <svg class="i icon"><use href="#i-terminal"/></svg>
+          <span class="lbl">终端 / 构建</span>
+          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
+        </button>
+        <button class="setting-row" id="row-git" type="button">
+          <svg class="i icon"><use href="#i-git"/></svg>
+          <span class="lbl">Git 版本控制</span>
+          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
         </button>
       </div>
 
       <div class="group">
         <div class="group-label">连接</div>
-        <button class="row" id="row-conn" type="button">
-          <svg class="i"><use href="#i-link"/></svg>
+        <button class="setting-row" id="row-conn" type="button">
+          <svg class="i icon"><use href="#i-link"/></svg>
           <span class="lbl">连接状态</span>
           <span class="val" id="set-conn">检测中…</span>
-          <svg class="i chev"><use href="#i-right"/></svg>
+          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
         </button>
-        <button class="row" id="row-channel" type="button">
-          <svg class="i"><use href="#i-database"/></svg>
+        <button class="setting-row" id="row-channel" type="button">
+          <svg class="i icon"><use href="#i-database"/></svg>
           <span class="lbl">通道</span>
           <span class="val mono" id="set-channel">自动</span>
-          <svg class="i chev"><use href="#i-right"/></svg>
+          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
         </button>
       </div>
 
       <div class="group">
         <div class="group-label">积分</div>
-        <button class="row" id="row-checkin" type="button">
-          <svg class="i"><use href="#i-coin"/></svg>
+        <button class="setting-row" id="row-checkin" type="button">
+          <svg class="i icon"><use href="#i-coin"/></svg>
           <span class="lbl">领取每日积分</span>
-          <svg class="i chev"><use href="#i-right"/></svg>
+          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
         </button>
-        <button class="row" id="row-onboarding" type="button">
-          <svg class="i"><use href="#i-coin"/></svg>
+        <button class="setting-row" id="row-onboarding" type="button">
+          <svg class="i icon"><use href="#i-coin"/></svg>
           <span class="lbl">领取新手奖励</span>
-          <svg class="i chev"><use href="#i-right"/></svg>
+          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
         </button>
       </div>
 
       <div class="group">
-        <button class="row danger" id="row-logout" type="button">
-          <svg class="i"><use href="#i-exit"/></svg>
+        <div class="group-label">关于</div>
+        <button class="setting-row" id="row-about" type="button">
+          <svg class="i icon"><use href="#i-info"/></svg>
+          <span class="lbl">版本信息</span>
+          <span class="val mono" id="set-version">—</span>
+        </button>
+        <button class="setting-row" id="row-privacy" type="button">
+          <svg class="i icon"><use href="#i-lock"/></svg>
+          <span class="lbl">隐私政策</span>
+        </button>
+        <button class="setting-row" id="row-terms" type="button">
+          <svg class="i icon"><use href="#i-file"/></svg>
+          <span class="lbl">用户协议</span>
+        </button>
+        <button class="setting-row" id="row-github" type="button">
+          <svg class="i icon"><use href="#i-github"/></svg>
+          <span class="lbl">开源地址</span>
+        </button>
+      </div>
+
+      <div class="group">
+        <button class="setting-row danger" id="row-logout" type="button">
+          <svg class="i icon"><use href="#i-exit"/></svg>
           <span class="lbl">退出登录</span>
         </button>
       </div>
@@ -377,11 +435,11 @@
      弹层
      ============================================================ -->
 
-<!-- 模型 -->
+<!-- 模型选择 -->
 <div id="sheet-model" class="sheet hidden" role="dialog" aria-modal="true" aria-label="选择模型">
   <div class="sheet-scrim" data-close></div>
   <div class="sheet-panel tall">
-    <div class="sheet-grip"></div>
+    <div class="sheet-handle"></div>
     <div class="sheet-head">
       <span class="t">选择模型</span>
       <button class="icon-btn sm" data-close type="button" aria-label="关闭"><svg class="i"><use href="#i-close"/></svg></button>
@@ -394,7 +452,7 @@
 <div id="sheet-effort" class="sheet hidden" role="dialog" aria-modal="true" aria-label="深度思考强度">
   <div class="sheet-scrim" data-close></div>
   <div class="sheet-panel tall">
-    <div class="sheet-grip"></div>
+    <div class="sheet-handle"></div>
     <div class="sheet-head">
       <span class="t">深度思考</span>
       <button class="icon-btn sm" data-close type="button" aria-label="关闭"><svg class="i"><use href="#i-close"/></svg></button>
@@ -403,24 +461,14 @@
   </div>
 </div>
 
-<!-- 附件 -->
+<!-- 附件菜单 -->
 <div id="sheet-attach" class="sheet hidden" role="dialog" aria-modal="true" aria-label="添加附件">
   <div class="sheet-scrim" data-close></div>
   <div class="sheet-panel auto">
-    <div class="sheet-grip"></div>
+    <div class="sheet-handle"></div>
     <div class="sheet-body">
-      <div class="attach-row">
-        <button class="attach-btn" id="att-camera" type="button">
-          <span class="ico"><svg class="i lg"><use href="#i-camera"/></svg></span>拍照
-        </button>
-        <button class="attach-btn" id="att-photo" type="button">
-          <span class="ico"><svg class="i lg"><use href="#i-image"/></svg></span>相册
-        </button>
-        <button class="attach-btn" id="att-file" type="button">
-          <span class="ico"><svg class="i lg"><use href="#i-file"/></svg></span>文件
-        </button>
-      </div>
-      <p class="sheet-tip" id="attach-tip" style="text-align:center;margin-bottom:8px"></p>
+      <div class="attach-grid" id="attach-grid"></div>
+      <p class="attach-tip" id="attach-tip"></p>
     </div>
   </div>
 </div>
@@ -429,20 +477,20 @@
 <div id="sheet-system" class="sheet hidden" role="dialog" aria-modal="true" aria-label="系统提示词">
   <div class="sheet-scrim" data-close></div>
   <div class="sheet-panel tall">
-    <div class="sheet-grip"></div>
+    <div class="sheet-handle"></div>
     <div class="sheet-head">
       <span class="t">系统提示词</span>
       <button class="icon-btn sm" data-close type="button" aria-label="关闭"><svg class="i"><use href="#i-close"/></svg></button>
     </div>
     <div class="sheet-body">
       <p class="sheet-tip">只对当前对话生效。留空表示不设置。</p>
-      <textarea id="system-input" class="input" placeholder="例如：你是一名严谨的技术编辑，回答先给结论，再给依据。"
-                spellcheck="false" style="min-height:130px"></textarea>
+      <textarea id="system-input" class="system-input" placeholder="例如：你是一名严谨的技术编辑，回答先给结论，再给依据。"
+                spellcheck="false"></textarea>
       <div class="section-label">常用预设</div>
-      <div id="system-presets" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      <div class="system-presets" id="system-presets"></div>
     </div>
     <div class="sheet-actions">
-      <button id="system-save" class="btn btn-primary btn-block" type="button">保存</button>
+      <button id="system-save" class="btn btn-primary btn-md btn-block" type="button">保存</button>
     </div>
   </div>
 </div>
@@ -451,15 +499,15 @@
 <div id="sheet-prompts" class="sheet hidden" role="dialog" aria-modal="true" aria-label="提示词库">
   <div class="sheet-scrim" data-close></div>
   <div class="sheet-panel tall">
-    <div class="sheet-grip"></div>
+    <div class="sheet-handle"></div>
     <div class="sheet-head">
       <span class="t">提示词库</span>
       <button class="icon-btn sm" data-close type="button" aria-label="关闭"><svg class="i"><use href="#i-close"/></svg></button>
     </div>
     <div class="sheet-body" id="prompt-list"></div>
     <div class="sheet-actions">
-      <button id="prompt-add" class="btn btn-block" type="button">
-        <svg class="i sm"><use href="#i-plus"/></svg>新建提示词
+      <button id="prompt-add" class="btn btn-md btn-block" type="button">
+        <svg class="i i-sm"><use href="#i-plus"/></svg>新建提示词
       </button>
     </div>
   </div>
@@ -469,12 +517,12 @@
 <div id="sheet-settings" class="sheet hidden" role="dialog" aria-modal="true" aria-label="设置">
   <div class="sheet-scrim" data-close></div>
   <div class="sheet-panel tall">
-    <div class="sheet-grip"></div>
+    <div class="sheet-handle"></div>
     <div class="sheet-head">
       <span class="t">设置</span>
       <button class="icon-btn sm" data-close type="button" aria-label="关闭"><svg class="i"><use href="#i-close"/></svg></button>
     </div>
-    <div class="sheet-body" id="settings-body"></div>
+    <div class="sheet-body settings-body" id="settings-body"></div>
   </div>
 </div>
 
@@ -482,24 +530,23 @@
 <div id="sheet-actions" class="sheet hidden" role="dialog" aria-modal="true" aria-label="消息操作">
   <div class="sheet-scrim" data-close></div>
   <div class="sheet-panel auto">
-    <div class="sheet-grip"></div>
-    <div class="sheet-body" style="padding-top:8px">
+    <div class="sheet-handle"></div>
+    <div class="sheet-body" style="padding-top:var(--gap-sm)">
       <div class="action-list" id="action-list"></div>
     </div>
   </div>
 </div>
 
-<!-- 确认 -->
-<div id="sheet-confirm" class="sheet hidden" role="dialog" aria-modal="true" aria-label="确认">
-  <div class="sheet-scrim" data-close></div>
-  <div class="sheet-panel auto">
-    <div class="sheet-grip"></div>
-    <div class="sheet-body" style="padding-top:12px">
-      <p id="confirm-text" style="margin:0 0 4px;font-size:15px;line-height:1.6;color:var(--ink)"></p>
+<!-- 确认对话框 -->
+<div id="sheet-confirm" class="confirm-dialog hidden" role="dialog" aria-modal="true" aria-label="确认">
+  <div class="confirm-backdrop" data-close></div>
+  <div class="confirm-panel">
+    <div class="confirm-head">
+      <p id="confirm-text" style="margin:0;font:var(--style-body5);color:var(--text-secondary);line-height:1.6"></p>
     </div>
-    <div class="sheet-actions" style="display:flex;gap:10px">
-      <button id="confirm-cancel" class="btn btn-block" type="button">取消</button>
-      <button id="confirm-ok" class="btn btn-primary btn-block" type="button">确定</button>
+    <div class="confirm-actions">
+      <button id="confirm-cancel" class="btn btn-secondary btn-md btn-block" type="button">取消</button>
+      <button id="confirm-ok" class="btn btn-primary btn-md btn-block" type="button">确定</button>
     </div>
   </div>
 </div>
@@ -508,35 +555,112 @@
 <div id="sheet-diag" class="sheet hidden" role="dialog" aria-modal="true" aria-label="连接诊断">
   <div class="sheet-scrim" data-close></div>
   <div class="sheet-panel tall">
-    <div class="sheet-grip"></div>
+    <div class="sheet-handle"></div>
     <div class="sheet-head">
       <span class="t">连接诊断</span>
       <button class="icon-btn sm" data-close type="button" aria-label="关闭"><svg class="i"><use href="#i-close"/></svg></button>
     </div>
     <div class="sheet-body">
-      <div class="row"><span class="lbl">通道</span><span class="val" id="diag-mode">—</span></div>
-      <div class="row"><span class="lbl">网络</span><span class="val" id="diag-net">检测中…</span></div>
-      <div class="row"><span class="lbl">登录态</span><span class="val" id="diag-auth">—</span></div>
-      <div class="row"><span class="lbl">最近错误</span><span class="val" id="diag-err">—</span></div>
-      <div style="display:flex;flex-direction:column;gap:10px;margin-top:20px">
-        <button id="diag-retest" class="btn btn-block" type="button">重新检测</button>
-        <button id="diag-proxy" class="btn btn-block" type="button">改用代理</button>
-        <button id="diag-direct" class="btn btn-block" type="button">恢复直连</button>
+      <div class="diag-grid">
+        <span class="lbl">通道</span><span class="val" id="diag-mode">—</span>
+        <span class="lbl">网络</span><span class="val" id="diag-net">检测中…</span>
+        <span class="lbl">登录态</span><span class="val" id="diag-auth">—</span>
+        <span class="lbl">最近错误</span><span class="val" id="diag-err">—</span>
       </div>
-      <p class="sheet-tip" style="margin-top:16px">直连模式下由 App 自身完成人机验证与短信登录，手机里不需要再跑任何服务。</p>
+      <div class="diag-actions">
+        <button id="diag-retest" class="btn btn-md btn-block" type="button">重新检测</button>
+        <button id="diag-proxy" class="btn btn-md btn-block" type="button">改用代理</button>
+        <button id="diag-direct" class="btn btn-secondary btn-md btn-block" type="button">恢复直连</button>
+      </div>
+      <p class="sheet-tip" style="margin-top:var(--gap-lg)">直连模式下由 App 自身完成人机验证与短信登录，手机里不需要再跑任何服务。</p>
     </div>
   </div>
 </div>
 
-<!-- 隐藏输入 -->
+<!-- 文件管理器 Sheet -->
+<div id="sheet-files" class="sheet hidden" role="dialog" aria-modal="true" aria-label="文件管理">
+  <div class="sheet-scrim" data-close></div>
+  <div class="sheet-panel full">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <span class="t">文件管理</span>
+      <div class="appbar-actions">
+        <button id="file-new-folder" class="icon-btn sm" type="button" aria-label="新建文件夹"><svg class="i"><use href="#i-plus"/></svg></button>
+        <button id="file-new-file" class="icon-btn sm" type="button" aria-label="新建文件"><svg class="i"><use href="#i-file-code"/></svg></button>
+        <button id="file-upload" class="icon-btn sm" type="button" aria-label="上传文件"><svg class="i"><use href="#i-upload"/></svg></button>
+      </div>
+    </div>
+    <div class="sheet-body" style="padding:0">
+      <div id="file-manager" style="height:100%;display:flex;flex-direction:column"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 终端 Sheet -->
+<div id="sheet-terminal" class="sheet hidden" role="dialog" aria-modal="true" aria-label="终端">
+  <div class="sheet-scrim" data-close></div>
+  <div class="sheet-panel full">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <span class="t">终端</span>
+      <div class="appbar-actions">
+        <button id="term-clear" class="icon-btn sm" type="button" aria-label="清屏"><svg class="i"><use href="#i-refresh"/></svg></button>
+        <button id="term-kill" class="icon-btn sm" type="button" aria-label="终止进程"><svg class="i"><use href="#i-stop"/></svg></button>
+      </div>
+    </div>
+    <div class="sheet-body" style="padding:0">
+      <div id="terminal" style="height:100%;font-family:var(--font-mono);font-size:13px;line-height:1.6;background:var(--core-paper-1000);color:var(--core-paper-00);padding:var(--gap-md);overflow:auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Git Sheet -->
+<div id="sheet-git" class="sheet hidden" role="dialog" aria-modal="true" aria-label="Git 版本控制">
+  <div class="sheet-scrim" data-close></div>
+  <div class="sheet-panel tall">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <span class="t">Git 版本控制</span>
+      <button class="icon-btn sm" data-close type="button" aria-label="关闭"><svg class="i"><use href="#i-close"/></svg></button>
+    </div>
+    <div class="sheet-body" id="git-body"></div>
+    <div class="sheet-actions">
+      <button id="git-pull" class="btn btn-secondary btn-md" type="button">拉取</button>
+      <button id="git-push" class="btn btn-primary btn-md" type="button">推送</button>
+    </div>
+  </div>
+</div>
+
+<!-- 代码编辑器 Sheet -->
+<div id="sheet-editor" class="sheet hidden" role="dialog" aria-modal="true" aria-label="代码编辑器">
+  <div class="sheet-scrim" data-close></div>
+  <div class="sheet-panel full">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <span class="t" id="editor-title">代码编辑器</span>
+      <div class="appbar-actions">
+        <button id="editor-save" class="btn btn-primary btn-sm" type="button"><svg class="i i-sm"><use href="#i-save"/></svg>保存</button>
+        <button id="editor-run" class="btn btn-rose btn-sm" type="button"><svg class="i i-sm"><use href="#i-play"/></svg>运行</button>
+        <button class="icon-btn sm" data-close type="button" aria-label="关闭"><svg class="i"><use href="#i-close"/></svg></button>
+      </div>
+    </div>
+    <div class="sheet-body" style="padding:0">
+      <div id="editor" style="height:100%"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 隐藏文件输入 -->
 <input id="file-image" type="file" accept="image/*" multiple class="hidden-input" aria-hidden="true">
 <input id="file-camera" type="file" accept="image/*" capture="environment" class="hidden-input" aria-hidden="true">
-<input id="file-doc" type="file" multiple class="hidden-input" aria-hidden="true">
+<input id="file-doc" type="file" accept=".txt,.md,.json,.js,.ts,.py,.html,.css,.yaml,.yml,.xml,.csv" multiple class="hidden-input" aria-hidden="true">
+<input id="file-upload" type="file" multiple class="hidden-input" aria-hidden="true">
+<input id="file-upload-input" type="file" multiple class="hidden-input" aria-hidden="true">
 
-<style>.hidden-input{position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0}</style>
-
+<!-- Toast -->
 <div id="toast" role="status" aria-live="polite"></div>
 
+<!-- 脚本加载 -->
 <script src="/native.js"></script>
 <script src="/markdown.js"></script>
 <script src="/direct.js"></script>
@@ -548,6 +672,7 @@
 <script src="/js/settings.js"></script>
 <script src="/js/composer.js"></script>
 <script src="/js/prompts.js"></script>
+<script src="/js/modules.js"></script>
 <script src="/js/app.js"></script>
 </body>
 </html>

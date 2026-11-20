@@ -5,7 +5,7 @@
   'use strict';
 
   const RC = (global.RC = global.RC || {});
-  RC.version = '3.0.0';
+  RC.version = '4.0.0';
 
   // ---------- DOM ----------
   const $ = (id) => document.getElementById(id);

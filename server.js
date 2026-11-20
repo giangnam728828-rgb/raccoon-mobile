@@ -28,6 +28,9 @@ const authStore = require('./lib/auth');
 const upstream = require('./lib/upstream');
 const staticSrv = require('./lib/static');
 const sync = require('./lib/sync');
+const fs = require('./lib/fs');
+const execMod = require('./lib/exec');
+const gitMod = require('./lib/git');
 
 const {
   UPSTREAM, PORT, HOST, ACCESS_KEY, MAX_BODY, MAX_SYNC_BYTES,
@@ -501,6 +504,135 @@ const server = http.createServer(async (req, res) => {
     if (url === '/api/sync' && method === 'DELETE') {
       sync.remove(key);
       return sendJSON(res, { ok: true });
+    }
+
+    // ---- 文件系统 API ----
+    if (url === '/api/fs/list' && method === 'POST') {
+      const body = await readBody(req);
+      try {
+        const entries = await fs.list(body.path || fs.ROOT);
+        return sendJSON(res, { ok: true, entries });
+      } catch (e) {
+        return sendJSON(res, { ok: false, message: e.message });
+      }
+    }
+
+    if (url === '/api/fs/read' && method === 'POST') {
+      const body = await readBody(req);
+      try {
+        const content = await fs.read(body.path);
+        return sendJSON(res, { ok: true, content });
+      } catch (e) {
+        return sendJSON(res, { ok: false, message: e.message });
+      }
+    }
+
+    if (url === '/api/fs/write' && method === 'POST') {
+      const body = await readBody(req);
+      if (!body.path || !('content' in body)) {
+        return sendJSON(res, { ok: false, message: '缺少 path 或 content' }, 400);
+      }
+      try {
+        const result = await fs.write(body.path, body.content);
+        return sendJSON(res, { ok: true, ...result });
+      } catch (e) {
+        return sendJSON(res, { ok: false, message: e.message });
+      }
+    }
+
+    if (url === '/api/fs/delete' && method === 'POST') {
+      const body = await readBody(req);
+      if (!body.path) return sendJSON(res, { ok: false, message: '缺少 path' }, 400);
+      try {
+        await fs.del(body.path);
+        return sendJSON(res, { ok: true });
+      } catch (e) {
+        return sendJSON(res, { ok: false, message: e.message });
+      }
+    }
+
+    if (url === '/api/fs/mkdir' && method === 'POST') {
+      const body = await readBody(req);
+      if (!body.path) return sendJSON(res, { ok: false, message: '缺少 path' }, 400);
+      try {
+        const result = await fs.mkdir(body.path);
+        return sendJSON(res, { ok: true, ...result });
+      } catch (e) {
+        return sendJSON(res, { ok: false, message: e.message });
+      }
+    }
+
+    if (url === '/api/fs/rename' && method === 'POST') {
+      const body = await readBody(req);
+      if (!body.from || !body.to) {
+        return sendJSON(res, { ok: false, message: '缺少 from 或 to' }, 400);
+      }
+      try {
+        const result = await fs.rename(body.from, body.to);
+        return sendJSON(res, { ok: true, ...result });
+      } catch (e) {
+        return sendJSON(res, { ok: false, message: e.message });
+      }
+    }
+
+    // ---- 命令执行 API ----
+    if (url === '/api/exec' && method === 'POST') {
+      const body = await readBody(req);
+      if (!body.cmd) return sendJSON(res, { ok: false, message: '缺少 cmd' }, 400);
+      if (!execMod.WHITELIST.includes(body.cmd)) {
+        return sendJSON(res, { ok: false, message: '命令不在白名单中：' + body.cmd });
+      }
+      try {
+        const result = await execMod.execCommand(body.cmd, body.args || [], {
+          timeout: body.timeout || 30000,
+          cwd: body.cwd || execMod.ROOT,
+          memoryLimit: body.memoryLimit || execMod.MAX_MEMORY,
+        });
+        return sendJSON(res, { ok: result.ok, stdout: result.stdout, stderr: result.stderr, code: result.code });
+      } catch (e) {
+        return sendJSON(res, { ok: false, message: e.message });
+      }
+    }
+
+    // ---- Git API ----
+    if (url === '/api/git/init' && method === 'POST') {
+      const body = await readBody(req);
+      try {
+        const result = await gitMod.initRepo(body.cwd || gitMod.ROOT);
+        return sendJSON(res, { ok: result.ok, message: result.message });
+      } catch (e) {
+        return sendJSON(res, { ok: false, message: e.message });
+      }
+    }
+
+    if (url === '/api/git/status' && method === 'POST') {
+      const body = await readBody(req);
+      try {
+        const status = await gitMod.status(body.cwd || gitMod.ROOT);
+        return sendJSON(res, { ok: true, ...status });
+      } catch (e) {
+        return sendJSON(res, { ok: false, message: e.message });
+      }
+    }
+
+    if (url === '/api/git/pull' && method === 'POST') {
+      const body = await readBody(req);
+      try {
+        const result = await gitMod.pull(body.cwd || gitMod.ROOT);
+        return sendJSON(res, { ok: result.ok, message: result.message });
+      } catch (e) {
+        return sendJSON(res, { ok: false, message: e.message });
+      }
+    }
+
+    if (url === '/api/git/push' && method === 'POST') {
+      const body = await readBody(req);
+      try {
+        const result = await gitMod.push(body.cwd || gitMod.ROOT);
+        return sendJSON(res, { ok: result.ok, message: result.message });
+      } catch (e) {
+        return sendJSON(res, { ok: false, message: e.message });
+      }
     }
 
     // ---- 未知接口 ----

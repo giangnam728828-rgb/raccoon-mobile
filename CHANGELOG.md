@@ -1,5 +1,60 @@
 # 变更记录
 
+## v4.0.0 —— 设计系统重构 + 文件管理 / 代码编辑 / 终端 / Git
+
+**这是一次「大更新」：视觉系统完全重写，新增移动端原生能力，把桌面端的开发工具链搬到手机上。**
+
+### 设计系统 v2（Tokens → Components → Screens）
+
+- **两层色彩架构**：Core Colors（11 级暖纸阶梯 + 品牌色阶梯） → Color System（语义别名，含 Light/Dark 完整映射）。组件只用语义 Token，换肤零侵入。
+- **严格 4px 网格**：`--space-1..12` + 语义间距 `--gutter/--gap-*`，同类组件同尺寸，列表行高统一 52px。
+- **Tailwind 标准圆角**：`--radius-none..full` + 组件级语义圆角 `--r-control/card/panel/sheet`，嵌套遵循 `inner = outer - gap (≥4px)`。
+- **Tailwind 标准字号阶梯**：12/14/16/18/20/24/30/36/48/60/72/96/128px，命名文本样式（H1–H6 / Title1–5 / Body1–6 / Btn / Caption1–5）全覆盖。
+- **单一缓动曲线**：`cubic-bezier(.22,1,.36,1)`，仅色彩/不透明度/变换可过渡，禁用 `transition-all`。
+- **完整组件状态矩阵**：Button (5变体×6状态) / Input (默认/悬停/聚焦/错误/成功/禁用) / Sheet (auto/tall/full + Loading/Empty/Error 槽位) / Card / TabBar(Material 3 风格) / ListRow / Avatar / Badge。
+
+### 核心屏幕重设计
+
+- **登录页**：品牌插图 Hero + 更清晰的表单层级 + Token 登录独立 Sheet。
+- **对话页**：状态点改为脉冲连接指示器、代码块悬浮工具栏、输入区多行自动增高 + 附件预览芯片 + 思考强度可视化标签。
+- **记录页**：实时搜索高亮、置顶分组、右滑/长按操作菜单。
+- **我的/设置页**：分组视觉区块、设置项统一 52px 行高、关于区含版本/隐私/协议/GitHub 链接。
+
+### 新增 P0 能力（移动端原生）
+
+| 功能 | 实现 | 入口 |
+|------|------|------|
+| **文件管理器** | Capacitor Filesystem + 原生插件 /api/fs/* | 我的 → 文件管理 |
+| **代码编辑器** | CodeMirror 6 (含语法高亮/补全/括号匹配) | 文件列表点击文件 / 我的 → 终端运行 |
+| **终端/构建** | 后端 /api/exec (白名单命令 + 超时/资源限制) | 我的 → 终端 |
+| **Git 版本控制** | 后端 /api/git/* (status/pull/push/init/log) | 我的 → Git |
+
+### 原生插件扩展 (android-ext/)
+
+- `RaccoonFilePlugin.java`：文件读写、目录列表、媒体扫描、文档选择器
+- `RaccoonShellPlugin.java`：受限 shell 执行（白名单：node/python3/bash/git，超时 30s、内存 256MB）
+- `RaccoonClipboardPlugin.java`：剪贴板读写
+
+### 后端新增 API
+
+- `/api/fs/*`：list/read/write/delete/mkdir/rename
+- `/api/exec`：命令执行（需用户二次确认）
+- `/api/git/*`：status/pull/push/init/log
+
+### 体验打磨
+
+- 微动效：按钮按压缩放、Sheet 升起/消失、TabBar 选中态描边加粗、跳底按钮弹入/新消息脉冲。
+- 无障碍：统一焦点环、键盘 Tab 顺序、`prefers-reduced-motion` 全生效。
+- 响应式：320/360/375/390/414px 无横向溢出，平板 ≥600px 侧边留白。
+
+### 版本与构建
+
+- `version: 4.0.0` / `versionCode: 40000`
+- GitHub Actions 固定签名发布（SHA-256: `11BC39DC...80CB6`）
+- 覆盖安装兼容 v3.x 用户数据
+
+---
+
 ## v3.0.0 —— 前端与后端整体重做
 
 这一版不是修补，是按「手机上的产品」重写。设计方向改跟随应用图标的世界：暖纸、墨字、一支玫瑰色的笔尖。
