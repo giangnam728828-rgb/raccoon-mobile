@@ -265,43 +265,81 @@
     if (!box) return;
     box.innerHTML = '';
 
-    const groups = [];
+    const groups = {};
     SETTINGS.forEach((it) => {
-      if (groups.indexOf(it.group) < 0) groups.push(it.group);
+      groups[it.group] = groups[it.group] || [];
+      groups[it.group].push(it);
     });
 
-    groups.forEach((g) => {
-      const label = el('div', 'group-label');
-      label.textContent = g;
-      box.appendChild(label);
+    Object.keys(groups).forEach((g) => {
+      // 分组容器
+      const groupEl = el('div', 'settings-group-v8');
+      
+      // 分组标题
+      const title = el('div', 'settings-group-title-v8', g);
+      groupEl.appendChild(title);
 
-      SETTINGS.filter((x) => x.group === g).forEach((it) => {
-        const row = el('button', 'setting-row');
+      groups[g].forEach((it) => {
+        const row = el('button', 'setting-row-modern');
         row.type = 'button';
-        row.appendChild(icon(it.icon));
-        row.appendChild(el('span', 'lbl', it.label));
+        
+        // 左侧图标和标签
+        const labelWrap = el('div', 'setting-label-modern');
+        const iconEl = icon(it.icon);
+        iconEl.className = 'setting-icon-modern';
+        labelWrap.appendChild(iconEl);
+        const lbl = el('span', '', it.label);
+        lbl.style.fontWeight = '600';
+        labelWrap.appendChild(lbl);
+        row.appendChild(labelWrap);
 
         if (it.type === 'custom') {
-          // 自定义渲染（如主题色选择器）：纵向布局，标题在上、控件在下，避免 label 被挤压竖排
-          row.style.cssText = 'flex-direction:column;align-items:stretch;height:auto;padding:var(--s-4);gap:var(--s-3)';
-          const title = el('div', 'custom-title');
-          title.style.cssText = 'display:flex;align-items:center;gap:var(--s-3);font:var(--style-body-strong)';
-          const tIcon = icon(it.icon);
-          tIcon.style.cssText = 'width:20px;height:20px;color:var(--icon-accent)';
-          title.appendChild(tIcon);
-          title.appendChild(el('span', '', it.label));
-          row.innerHTML = '';
-          row.appendChild(title);
-          if (it.render) it.render(row, it);
+          // 自定义渲染（如主题色选择器）
+          row.style.cssText = 'flex-direction:column;align-items:stretch;padding:var(--s-3);margin:0';
+          const customRow = el('div', 'setting-row-modern');
+          const cw = el('div', 'setting-label-modern');
+          const ci = icon(it.icon);
+          ci.className = 'setting-icon-modern';
+          cw.appendChild(ci);
+          const cl = el('span', '', it.label);
+          cl.style.fontWeight = '600';
+          cw.appendChild(cl);
+          customRow.appendChild(cw);
+          
+          const wrap = el('div', 'theme-swatches-v8');
+          THEMES.forEach((t) => {
+            const item = el('div', 'swatch-item-v8');
+            const sw = el('div', 'swatch-v8' + ((it.value() === t.id) ? ' on' : ''));
+            sw.style.setProperty('--sw1', t.sw1);
+            sw.style.setProperty('--sw2', t.sw2);
+            sw.setAttribute('title', t.name);
+            sw.addEventListener('click', (e) => {
+              e.stopPropagation();
+              S.prefs.accent = t.id;
+              document.documentElement.setAttribute('data-accent', t.id);
+              RC.savePrefs();
+              renderSettings();
+              RC.haptic(6);
+              RC.toast('主题色：' + t.name);
+            });
+            item.appendChild(sw);
+            const nm = el('span', 'theme-name-v8', t.name);
+            item.appendChild(nm);
+            wrap.appendChild(item);
+          });
+          customRow.appendChild(wrap);
+          groupEl.appendChild(customRow);
+          return;
         } else if (it.type === 'switch') {
-          const sw = el('button', 'switch');
-          sw.type = 'button';
-          sw.setAttribute('role', 'switch');
-          sw.setAttribute('aria-checked', it.value() ? 'true' : 'false');
-          sw.addEventListener('click', (e) => {
-            e.stopPropagation();
-            it.toggle(!it.value());
-            sw.setAttribute('aria-checked', it.value() ? 'true' : 'false');
+          const sw = el('label', 'toggle-modern');
+          const chk = el('input', '');
+          chk.type = 'checkbox';
+          chk.checked = it.value();
+          const slider = el('span', 'toggle-slider-modern');
+          sw.appendChild(chk);
+          sw.appendChild(slider);
+          chk.addEventListener('change', () => {
+            it.toggle(chk.checked);
             RC.haptic(6);
           });
           row.appendChild(sw);
@@ -315,17 +353,25 @@
             }
           });
           row.classList.add('cycle');
-          row.appendChild(el('span', 'val', it.value ? it.value() : ''));
-          row.appendChild(icon('chevron-right', 'sm chevron'));
+          const val = el('span', 'setting-value-modern', it.value ? it.value() : '');
+          row.appendChild(val);
+          const arrow = icon('chevron-right');
+          arrow.style.width = '16px';
+          arrow.style.height = '16px';
+          arrow.style.color = 'var(--text-muted)';
+          row.appendChild(arrow);
         } else if (it.type === 'link') {
           row.addEventListener('click', () => {
             window.open(it.href, it.target || '_blank');
           });
           row.classList.add('cycle');
-          row.appendChild(icon('external-link', 'sm chevron'));
+          const arrow = icon('external-link');
+          arrow.style.width = '16px';
+          arrow.style.height = '16px';
+          arrow.style.color = 'var(--text-muted)';
+          row.appendChild(arrow);
         } else {
-          row.appendChild(el('span', 'val', it.value()));
-          row.appendChild(icon('chevron-right', 'sm chevron'));
+          row.appendChild(el('span', 'setting-value-modern', it.value()));
           row.classList.add('cycle');
           row.addEventListener('click', () => {
             if (it.cycle) {
@@ -334,8 +380,9 @@
             }
           });
         }
-        box.appendChild(row);
+        groupEl.appendChild(row);
       });
+      box.appendChild(groupEl);
     });
   }
 
