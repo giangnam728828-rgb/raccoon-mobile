@@ -355,6 +355,13 @@
     }
     if (opts.token) headers.authorization = 'Bearer ' + opts.token;
 
+    // 默认给非流式请求套一个 15 秒超时，避免官方接口挂住时界面一直转圈
+    var ctrl = opts.signal ? null : new AbortController();
+    if (ctrl) {
+      var timer = setTimeout(function () { ctrl.abort(); }, 15000);
+      ctrl._timer = timer;
+    }
+
     return fetch(UPSTREAM + path, {
       method: opts.method || 'GET',
       headers: headers,
@@ -362,9 +369,12 @@
       // 官方会种 xhx_token 之类的 cookie，能带就带上
       credentials: 'include',
       cache: 'no-store',
-      signal: opts.signal,
+      signal: opts.signal || (ctrl ? ctrl.signal : undefined),
     }).catch(function (e) {
-      if (e && e.name === 'AbortError') throw e;
+      if (ctrl && ctrl._timer) clearTimeout(ctrl._timer);
+      if (e && e.name === 'AbortError') {
+        throw new Error('请求超时，请稍后重试');
+      }
       throw netError('连不上官方服务，请检查网络');
     });
   }

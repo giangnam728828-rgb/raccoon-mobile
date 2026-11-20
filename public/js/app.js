@@ -335,8 +335,11 @@
     RC.renderMe();
     RC.renderThread();
 
-    // 并行拉账号与模型
-    const results = await Promise.allSettled([RC.me(), RC.loadCatalog()]);
+    // 并行拉账号与模型（带超时）
+    const results = await Promise.allSettled([
+      withTimeout(RC.me(), 5000, '账号'),
+      withTimeout(RC.loadCatalog(), 8000, '模型'),
+    ]);
 
     if (results[0].status === 'fulfilled' && results[0].value && results[0].value.ok) {
       applyMe(results[0].value);
@@ -1082,6 +1085,17 @@
   // ============================================================
   // 启动
   // ============================================================
+
+  // 带超时的 Promise 包装：网络不通时也不会把启动卡死
+  function withTimeout(promise, ms, label) {
+    return Promise.race([
+      Promise.resolve(promise),
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error((label || '请求') + '超时')), ms);
+      }),
+    ]);
+  }
+
   async function init() {
     RC.loadPrefs();
     RC.loadPrompts();
@@ -1095,9 +1109,18 @@
     RC.updateSend();
     RC.renderDrafts();
 
-    // 配置
+    // 界面先可用：立刻显示登录页并收起启动层（网络慢也不卡启动屏）
+    const bootEl = $('boot');
+    if (bootEl) {
+      setTimeout(() => bootEl.classList.add('gone'), 60);
+      setTimeout(() => { bootEl.style.display = 'none'; }, 420);
+    }
+    RC.showView('login');
+    RC.renderNations();
+
+    // 配置（带超时，避免卡死）
     try {
-      const cfg = await RC.loginConfig();
+      const cfg = await withTimeout(RC.loginConfig(), 5000, '配置');
       if (cfg && cfg.ok) {
         loginCfg = {
           captcha: cfg.captcha || loginCfg.captcha,
@@ -1113,7 +1136,7 @@
     const hasLocal = global.RaccoonDirect.hasAuth() || !RC.isDirect();
     if (hasLocal) {
       try {
-        const d = await RC.me();
+        const d = await withTimeout(RC.me(), 6000, '账号');
         if (d && d.ok) {
           applyMe(d);
           RC.showView('app');
