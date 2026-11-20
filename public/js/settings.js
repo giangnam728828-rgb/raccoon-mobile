@@ -310,6 +310,8 @@
     }
     const effEl = $('effort-name');
     const btn = $('btn-effort');
+    // 如果 btn-effort 不存在（已隐藏），跳过按钮样式更新
+    if (!btn && !effEl) return;
     if (effEl) {
       if (!RC.reasoningSupported()) {
         effEl.textContent = '不支持推理';

@@ -85,6 +85,9 @@ jobs:
       - name: 注入原生流式通道
         run: python3 scripts/inject-native-plugin.py android
 
+      - name: 注入设备操作插件（无障碍）
+        run: python3 scripts/inject-device-plugin.py android
+
       - name: 注入应用图标
         run: python3 scripts/inject-icon.py android
 

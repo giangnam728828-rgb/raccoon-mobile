@@ -232,8 +232,12 @@
   function mkAct(ico, label, onClick) {
     const b = el('button');
     b.type = 'button';
+    b.setAttribute('aria-label', label);
+    // Tooltip (title) for desktop
+    b.title = label;
     b.appendChild(icon(ico));
-    b.appendChild(document.createTextNode(label));
+    // No text label - icon only per design
+    // b.appendChild(document.createTextNode(label));
     b.addEventListener('click', (e) => {
       e.stopPropagation();
       onClick();

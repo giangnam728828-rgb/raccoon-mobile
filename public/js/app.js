@@ -1193,4 +1193,11 @@
   } else {
     RC.init();
   }
+
+  // Tools init (device + plugins)
+  if (window.RC?.checkDeviceSupport) {
+    RC.checkDeviceSupport();
+    RC.bindDeviceSheet();
+    RC.bindMeRows();
+  }
 })(window);
