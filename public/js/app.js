@@ -10,6 +10,10 @@
 
   const CAPTCHA_SDK = 'https://o.alicdn.com/captcha-frontend/aliyunCaptcha/AliyunCaptcha.js';
 
+  // P0-2 v2.9：身份确认代次与初始化状态
+  let __authFlowSeq = 0;     // 身份确认代次：新登录/登出/通道切换递增
+  let __initStarted = false; // 一次性初始化保护
+
   let loginCfg = {
     captcha: { scene: '1pkmy0x3', prefix: 'hk1r5l', region: 'cn' },
     nationCodes: [
@@ -279,6 +283,11 @@
     RC.hideLogin && RC.hideLogin();
     RC.meOK = true;
     S.loggedIn = true;
+
+    // P0-2 v2.9（B6）：新登录会话 = 新身份代次；先让旧账号上下文立即失效
+    __authFlowSeq++;
+    RC.endAccountContext();
+
     RC.setTab('chat');
     enterApp();
   }
@@ -288,12 +297,16 @@
     stopStreaming();
     RC.stopSpeak();
     RC.clearAllSheets();
+
+    // P0-2 v2.9：先递增代次使在途身份确认作废，再结束账号上下文
+    __authFlowSeq++;
+    RC.endAccountContext();
+
     if (global.RaccoonDirect) global.RaccoonDirect.clearAuth();
 
     S.messages = [];
     S.chats = [];
     S.chatId = '';
-    S.models = [];
     S.verificationId = '';
     S.points = 0;
 
@@ -329,30 +342,37 @@
   };
 
   // ============================================================
-  // 启动进入
+  // 启动进入（P0-2 v2.9：串行身份确认 + 代次保护）
   // ============================================================
   async function enterApp() {
+    const authSeq = __authFlowSeq;   // 捕获当前身份代次
+
     if (!S.chats.length) RC.loadChats();
     RC.paintModelBar();
     RC.renderMe();
     RC.renderThread();
 
-    // 并行拉账号与模型（带超时）
-    const results = await Promise.allSettled([
-      withTimeout(RC.me(), 5000, '账号'),
-      withTimeout(RC.loadCatalog(), 8000, '模型'),
-    ]);
+    let meResult = null;
+    try {
+      meResult = await withTimeout(RC.me(), 5000, '账号');
+    } catch (e) {}
 
-    if (results[0].status === 'fulfilled' && results[0].value && results[0].value.ok) {
-      applyMe(results[0].value);
-    }
-    if (results[1].status === 'fulfilled') {
-      const r = results[1].value;
-      if (r && !r.ok) {
-        // 模型拉取失败不阻断，用默认模型兜底
+    // 【代次校验】旧身份确认结果一律丢弃，不覆盖新会话
+    if (authSeq !== __authFlowSeq) return;
+
+    if (meResult && meResult.ok && meResult.uid) {
+      RC.beginAccountContext(meResult.uid);
+      applyMe(meResult);
+      const r = await RC.loadCatalog();
+      if (r && !r.ok && r.reason !== 'stale' && r.reason !== 'no_account') {
         RC.toast('模型列表未加载，已用默认模型');
       }
+    } else {
+      RC.endAccountContext();
     }
+
+    // 【二次校验】loadCatalog 等待期间也可能发生新登录，UI 刷新需再确认
+    if (authSeq !== __authFlowSeq) return;
 
     RC.paintModelBar();
     RC.renderMe();
@@ -917,6 +937,9 @@
       return;
     }
     RC.lsSet(RC.K.proxy, v);
+    // P0-2 v2.9：通道切换使在途身份确认作废，先结束账号上下文再清认证
+    __authFlowSeq++;
+    RC.endAccountContext();
     global.RaccoonDirect.clearAuth();
     RC.renderMe();
     RC.toast('已切换到代理');
@@ -925,6 +948,9 @@
 
   function useDirect() {
     RC.lsDel(RC.K.proxy);
+    // P0-2 v2.9：通道切换使在途身份确认作废，先结束账号上下文再清认证
+    __authFlowSeq++;
+    RC.endAccountContext();
     global.RaccoonDirect.clearAuth();
     RC.renderMe();
     RC.toast('已恢复直连');
@@ -1120,6 +1146,11 @@
   }
 
   async function init() {
+    // P0-2 v2.9：一次性初始化保护 + 捕获身份代次
+    if (__initStarted) return;
+    __initStarted = true;
+    const authSeq = __authFlowSeq;
+
     RC.loadPrefs();
     RC.loadPrompts();
     RC.applyTheme();
@@ -1163,14 +1194,31 @@
     // 后台检查登录态：只更新账号信息，不切屏、不弹登录
     const hasLocal = global.RaccoonDirect.hasAuth() || !RC.isDirect();
     if (hasLocal) {
+      let d = null;
       try {
-        const d = await withTimeout(RC.me(), 6000, '账号');
-        if (d && d.ok) {
-          applyMe(d);
-          RC.meOK = true;
-        }
-      } catch (e) { /* 网络问题静默，用户点登录时再提示 */ }
+        d = await withTimeout(RC.me(), 6000, '账号');
+      } catch (e) {
+        // P0-2 v2.9：身份确认异常/超时——代次有效才清理旧上下文
+        if (authSeq === __authFlowSeq) RC.endAccountContext();
+        return;
+      }
+
+      // P0-2 v2.9：代次检查必须在任何建立/清理之前；过期流程直接放弃
+      if (authSeq !== __authFlowSeq) return;
+
+      if (d && d.ok && d.uid) {
+        applyMe(d);
+        RC.meOK = true;
+        RC.beginAccountContext(d.uid);
+        RC.loadCatalog().catch(() => {});
+      } else {
+        // P0-2 v2.9：覆盖全部无效身份结果
+        // （null / undefined / {ok:false} / {ok:true,uid:''}）
+        RC.endAccountContext();
+      }
     }
+    // P0-2 v2.9：身份确认后 UI 同步前再校验代次
+    if (authSeq !== __authFlowSeq) return;
     RC.paintModelBar && RC.paintModelBar();
     RC.renderMe && RC.renderMe();
   }

@@ -10,7 +10,7 @@
   },
   "scripts": {
     "start": "node server.js",
-    "test": "node test/smoke.js && node test/direct-crypto.js",
+    "test": "node test/smoke.js && node test/direct-crypto.js && node test/catalog-concurrency.js && node test/auth-flow.js",
     "build:web": "echo 前端为静态资源，无需构建",
     "cap:sync": "npx cap copy android",
     "apk": "cd android && ./gradlew assembleDebug --no-daemon"

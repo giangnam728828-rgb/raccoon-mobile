@@ -723,9 +723,12 @@
     return out;
   }
 
-  async function catalog() {
+  async function catalog(opts) {
     if (!hasAuth()) throw authError('未登录');
-    var r = await json('/api/web/llm/v2/model_catalog', { token: auth.token, headers: webHeaders() });
+    var o = opts || {};
+    var jsonOpts = { token: auth.token, headers: webHeaders() };
+    if (o.signal) jsonOpts.signal = o.signal;
+    var r = await json('/api/web/llm/v2/model_catalog', jsonOpts);
     var env = envelope(r);
     if (!env.ok) {
       if (env.status === 401 || env.status === 403) {
@@ -1046,7 +1049,7 @@
       case '/api/me':
         return me();
       case '/api/catalog':
-        return catalog();
+        return catalog(opts);
       case '/api/checkin':
         return checkin();
       case '/api/onboarding':

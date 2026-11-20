@@ -14,6 +14,76 @@
 
   const DEFAULT_MODEL = 'raccoon-chat-ml-5-5';
 
+  // ============================================================
+  // 模型目录加载：私有状态与工具（P0-2 v2.9）
+  // ============================================================
+  const CATALOG_TIMEOUT_MS = 8000;
+
+  const __catalogState = {
+    accountId: null,      // 当前账号上下文 ID（由 me().uid 提供）
+    version: 0,           // 账号上下文版本（登录/登出/通道切换递增）
+    requestSeq: 0,        // 请求代次（每次真正创建请求时递增）
+    activeRequest: null,  // 当前活跃请求记录
+    lastOk: {},           // 账号缓存：{ [accountId]: { models, hasLoaded } }
+    status: 'idle',       // idle | loading | failed
+  };
+
+  // 所有全局状态写入的唯一有效性入口
+  function isCurrentRequest(record) {
+    return !!record &&
+      record.isValidating &&
+      __catalogState.activeRequest === record &&
+      __catalogState.accountId === record.accountId &&
+      __catalogState.version === record.version &&
+      __catalogState.requestSeq === record.seq;
+  }
+
+  // 只结算自身，幂等；统一用 resolve，不使用 reject
+  function settleRecord(record, result) {
+    if (!record || record.settled) return;
+    record.settled = true;
+    record.resolve(result);
+  }
+
+  // 统一失效 + 立即结算；不修改全局状态、不碰其他请求的登记
+  function invalidateRequest(record, reason) {
+    if (!record) return;
+    record.isValidating = false;
+    if (record.timeoutId) {
+      clearTimeout(record.timeoutId);
+      record.timeoutId = null;
+    }
+    try {
+      if (record.controller) record.controller.abort();
+    } catch (e) {}
+    settleRecord(record, { ok: false, reason: reason || 'stale' });
+  }
+
+  // 合法空数组也算有效缓存（hasLoaded）
+  function hasValidCache(accountId) {
+    const c = __catalogState.lastOk[accountId];
+    return !!(c && c.hasLoaded);
+  }
+
+  function safePaintModelBar() {
+    try {
+      if (typeof RC.paintModelBar === 'function') RC.paintModelBar();
+    } catch (e) {}
+  }
+
+  function selectDefaultModel(list) {
+    const preferred = S.prefs.model;
+    if (preferred && list.some((m) => m.id === preferred)) return;
+    if (!list.length) return;
+    const best =
+      list.find((m) => m.supportsReasoning && m.supportsImages) ||
+      list.find((m) => m.supportsReasoning) ||
+      list[0];
+    S.prefs.model = best.id;
+    RC.savePrefs();
+  }
+
+
   // ---------- 通道 ----------
   function proxyBase() {
     return String(RC.lsGet(K.proxy, '') || '').trim().replace(/\/+$/, '');
@@ -34,11 +104,13 @@
 
     let res;
     try {
-      res = await fetch(base + path, {
+      const fetchOpts = {
         method: o.method || 'GET',
         headers: Object.assign(headers, o.headers || {}),
         body: o.body ? JSON.stringify(o.body) : undefined,
-      });
+      };
+      if (o.signal) fetchOpts.signal = o.signal;
+      res = await fetch(base + path, fetchOpts);
     } catch (e) {
       throw new Error('连不上代理 ' + base + '（' + (e && e.name === 'AbortError' ? '超时' : '网络不可达') + '）');
     }
@@ -115,34 +187,186 @@
     };
   }
 
-  async function loadCatalog() {
-    const d = await api('/api/catalog');
-    if (!d || !d.ok || !Array.isArray(d.models)) {
-      return { ok: false, message: (d && d.message) || '获取模型列表失败' };
-    }
-    const seen = new Set();
-    const list = [];
-    d.models.forEach((raw) => {
-      const m = normalizeModel(raw);
-      if (!m || seen.has(m.id)) return;
-      seen.add(m.id);
-      list.push(m);
-    });
-    S.models = list;
+  // 普通函数：首次与复用调用共享同一个 Promise 对象（P0-2 v2.9）
+  function loadCatalog(options) {
+    const refresh = !!(options && options.refresh);
+    const acct = __catalogState.accountId;
 
-    const preferred = S.prefs.model;
-    if (preferred && list.some((m) => m.id === preferred)) {
-      // 保留用户选择
-    } else if (list.length) {
-      // 默认挑一个能力最全的
-      const best =
-        list.find((m) => m.supportsReasoning && m.supportsImages) ||
-        list.find((m) => m.supportsReasoning) ||
-        list[0];
-      S.prefs.model = best.id;
-      RC.savePrefs();
+    // 无有效账号上下文：不发起网络请求，不改共享状态
+    if (!acct) return Promise.resolve({ ok: false, reason: 'no_account' });
+
+    const active = __catalogState.activeRequest;
+
+    // 请求类型规则（B4）：
+    // 普通 + 任意 → 复用；刷新 + 刷新 → 复用；仅"刷新 + 普通"→ 替换
+    if (active && active.isValidating && active.accountId === acct) {
+      if (!refresh) return active.promise;
+      if (active.refresh) return active.promise;
+      // 主动刷新替换普通请求：立即失效并结算旧 Promise，不等待底层返回
+      invalidateRequest(active, 'stale');
+      if (__catalogState.activeRequest === active) __catalogState.activeRequest = null;
     }
-    return { ok: true, models: list };
+
+    // 创建新请求（仅真正创建时递增代次）
+    const seq = ++__catalogState.requestSeq;
+    const record = {
+      seq: seq,
+      accountId: acct,
+      version: __catalogState.version,
+      refresh: refresh,
+      controller: (typeof AbortController !== 'undefined') ? new AbortController() : null,
+      promise: null,
+      resolve: null,
+      settled: false,
+      isValidating: true,
+      timeoutId: null,
+    };
+    record.promise = new Promise(function (resolve) { record.resolve = resolve; });
+
+    // 先登记，再启动
+    __catalogState.activeRequest = record;
+    __catalogState.status = 'loading';
+
+    // 超时：先判有效性（此时仍有效）→ 更新状态 → 再失效/清理/结算
+    record.timeoutId = setTimeout(function () {
+      if (!isCurrentRequest(record)) return;
+      __catalogState.status = hasValidCache(record.accountId) ? 'idle' : 'failed';
+      record.isValidating = false;
+      record.timeoutId = null;
+      try { if (record.controller) record.controller.abort(); } catch (e) {}
+      if (__catalogState.activeRequest === record) __catalogState.activeRequest = null;
+      settleRecord(record, { ok: false, reason: 'timeout' });
+    }, CATALOG_TIMEOUT_MS);
+
+    // 后台执行网络请求，不阻塞返回
+    executeCatalogRequest(record);
+
+    // 首次与复用返回同一个 Promise 对象
+    return record.promise;
+  }
+
+  async function executeCatalogRequest(record) {
+    try {
+      const base = proxyBase();
+      const path = '/api/catalog';
+      const signal = record.controller ? record.controller.signal : undefined;
+
+      const res = base
+        ? await proxyApi(base, path, { signal: signal })
+        : await global.RaccoonDirect.handle(path, { signal: signal });
+
+      // 迟到/已失效：不写任何全局状态
+      if (!isCurrentRequest(record)) {
+        settleRecord(record, { ok: false, reason: 'stale' });
+        return;
+      }
+
+      if (!res || !res.ok || !Array.isArray(res.models)) {
+        __catalogState.status = hasValidCache(record.accountId) ? 'idle' : 'failed';
+        if (__catalogState.activeRequest === record) __catalogState.activeRequest = null;
+        settleRecord(record, { ok: false, reason: 'server_error', message: (res && res.message) || '' });
+        return;
+      }
+
+      // 归一化（沿用 normalizeModel 原规则）
+      const seen = new Set();
+      const list = [];
+      res.models.forEach(function (raw) {
+        const m = normalizeModel(raw);
+        if (!m || seen.has(m.id)) return;
+        seen.add(m.id);
+        list.push(m);
+      });
+
+      // 二次确认（await 期间可能已被替换）
+      if (!isCurrentRequest(record)) {
+        settleRecord(record, { ok: false, reason: 'stale' });
+        return;
+      }
+
+      // 成功：写缓存/状态
+      __catalogState.lastOk[record.accountId] = { models: list, hasLoaded: true };
+      S.models = list;
+      selectDefaultModel(list);
+      __catalogState.status = 'idle';
+      if (__catalogState.activeRequest === record) __catalogState.activeRequest = null;
+      settleRecord(record, { ok: true, models: list });
+      safePaintModelBar();
+    } catch (e) {
+      if (!isCurrentRequest(record)) {
+        settleRecord(record, { ok: false, reason: 'stale' });
+        return;
+      }
+      const reason = (e && e.name === 'AbortError') ? 'cancelled' : ((e && e.message) || 'network');
+      __catalogState.status = hasValidCache(record.accountId) ? 'idle' : 'failed';
+      if (__catalogState.activeRequest === record) __catalogState.activeRequest = null;
+      settleRecord(record, { ok: false, reason: reason });
+    } finally {
+      if (record.timeoutId) {
+        clearTimeout(record.timeoutId);
+        record.timeoutId = null;
+      }
+    }
+  }
+
+  // ============================================================
+  // 账号上下文管理（P0-2 v2.9）
+  // ============================================================
+  function beginAccountContext(accountId) {
+    if (!accountId || typeof accountId !== 'string') return;
+
+    // N2：同账号且已有有效上下文 → 幂等，不重置
+    if (__catalogState.accountId === accountId && __catalogState.version > 0) return;
+
+    // 失效旧上下文请求（立即结算）
+    if (__catalogState.activeRequest) {
+      invalidateRequest(__catalogState.activeRequest, 'stale');
+      __catalogState.activeRequest = null;
+    }
+
+    // 跨账号隔离：先清空当前模型
+    S.models = [];
+
+    __catalogState.accountId = accountId;
+    __catalogState.version++;
+    __catalogState.requestSeq++;
+    __catalogState.status = 'idle';
+
+    // N3：恢复该账号缓存（不算网络成功）
+    const cached = __catalogState.lastOk[accountId];
+    if (cached && cached.hasLoaded) {
+      S.models = cached.models.slice();
+      selectDefaultModel(S.models);
+    }
+
+    // N3：立即同步模型栏
+    safePaintModelBar();
+  }
+
+  function endAccountContext() {
+    if (__catalogState.activeRequest) {
+      invalidateRequest(__catalogState.activeRequest, 'stale');
+      __catalogState.activeRequest = null;
+    }
+    S.models = [];
+    __catalogState.accountId = null;
+    __catalogState.version++;
+    __catalogState.requestSeq++;
+    __catalogState.status = 'idle';
+    // N3：立即清空模型栏
+    safePaintModelBar();
+  }
+
+  function getModels() {
+    return S.models.slice();
+  }
+
+  function getCatalogStatus() {
+    return __catalogState.status;
+  }
+
+  function currentAccountId() {
+    return __catalogState.accountId;
   }
 
   function currentModel() {
@@ -397,5 +621,7 @@
     loginConfig, me, checkin, onboarding, logoutRemote,
     probe, probeProxy, proxyCandidates, autoDetectProxy,
     buildMessages, composeUser, streamChat,
+    // P0-2 v2.9: 账号上下文与模型加载状态管理
+    beginAccountContext, endAccountContext, getModels, getCatalogStatus, currentAccountId,
   });
 })(window);
