@@ -282,7 +282,16 @@
         row.appendChild(el('span', 'lbl', it.label));
 
         if (it.type === 'custom') {
-          // 自定义渲染（如主题色选择器）
+          // 自定义渲染（如主题色选择器）：纵向布局，标题在上、控件在下，避免 label 被挤压竖排
+          row.style.cssText = 'flex-direction:column;align-items:stretch;height:auto;padding:var(--s-4);gap:var(--s-3)';
+          const title = el('div', 'custom-title');
+          title.style.cssText = 'display:flex;align-items:center;gap:var(--s-3);font:var(--style-body-strong)';
+          const tIcon = icon(it.icon);
+          tIcon.style.cssText = 'width:20px;height:20px;color:var(--icon-accent)';
+          title.appendChild(tIcon);
+          title.appendChild(el('span', '', it.label));
+          row.innerHTML = '';
+          row.appendChild(title);
           if (it.render) it.render(row, it);
         } else if (it.type === 'switch') {
           const sw = el('button', 'switch');
