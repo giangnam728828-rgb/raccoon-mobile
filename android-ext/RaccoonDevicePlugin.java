@@ -81,7 +81,7 @@ public class RaccoonDevicePlugin extends Plugin {
     @PluginMethod
     public void dump(PluginCall call) {
         AccessibilityService s = svc();
-        if (s == null) return failNoService(call);
+        if (s == null) { failNoService(call); return; }
 
         try {
             AccessibilityNodeInfo root = s.getRootInActiveWindow();
@@ -156,7 +156,7 @@ public class RaccoonDevicePlugin extends Plugin {
     @PluginMethod
     public void tapByText(PluginCall call) {
         AccessibilityService s = svc();
-        if (s == null) return failNoService(call);
+        if (s == null) { failNoService(call); return; }
 
         String q = call.getString("text", "");
         if (TextUtils.isEmpty(q)) {
@@ -212,7 +212,7 @@ public class RaccoonDevicePlugin extends Plugin {
     @PluginMethod
     public void tap(PluginCall call) {
         AccessibilityService s = svc();
-        if (s == null) return failNoService(call);
+        if (s == null) { failNoService(call); return; }
 
         int x = call.getInt("x", -1);
         int y = call.getInt("y", -1);
@@ -240,7 +240,7 @@ public class RaccoonDevicePlugin extends Plugin {
     @PluginMethod
     public void swipe(PluginCall call) {
         AccessibilityService s = svc();
-        if (s == null) return failNoService(call);
+        if (s == null) { failNoService(call); return; }
 
         int x1 = call.getInt("x1", -1);
         int y1 = call.getInt("y1", -1);
@@ -272,7 +272,7 @@ public class RaccoonDevicePlugin extends Plugin {
     @PluginMethod
     public void global(PluginCall call) {
         AccessibilityService s = svc();
-        if (s == null) return failNoService(call);
+        if (s == null) { failNoService(call); return; }
 
         String a = call.getString("action", "");
         int code;
@@ -297,7 +297,7 @@ public class RaccoonDevicePlugin extends Plugin {
     @PluginMethod
     public void setText(PluginCall call) {
         AccessibilityService s = svc();
-        if (s == null) return failNoService(call);
+        if (s == null) { failNoService(call); return; }
 
         String text = call.getString("text", "");
         try {
