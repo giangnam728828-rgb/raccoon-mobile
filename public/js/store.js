@@ -56,7 +56,7 @@
   const DEFAULTS = {
     model: '',
     effort: 'off',
-    theme: 'auto',        // auto | light | dark
+    theme: 'dark',        // auto | light | dark (v6 默认深色工具风格)
     fontScale: 1,         // 1 | 1.08 | 1.18
     haptic: true,
     nation: '+86',

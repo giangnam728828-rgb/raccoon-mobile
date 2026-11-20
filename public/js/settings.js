@@ -443,10 +443,8 @@
     });
     open('row-backup', () => RC.syncUpload());
     open('row-restore', () => RC.syncDownload());
-    open('row-files', () => {
-      RC.fmInit && RC.fmInit();
-      RC.openSheet('sheet-files');
-    });
+    open('row-files', () => RC.setTab('files'));
+    open('row-device', () => RC.setTab('device'));
     open('row-terminal', () => {
       RC.openSheet('sheet-terminal');
     });
@@ -454,18 +452,14 @@
       RC.gitLoad && RC.gitLoad();
       RC.openSheet('sheet-git');
     });
+    open('row-plugins', () => {
+      RC.renderPlugins && RC.renderPlugins();
+      RC.openSheet('sheet-plugins');
+    });
     open('row-about', () => {
-      RC.toast('小浣熊移动端 v' + RC.version);
+      RC.toast('小浣熊 · v' + RC.version);
     });
-    open('row-privacy', () => {
-      global.open('https://example.com/privacy', '_blank');
-    });
-    open('row-terms', () => {
-      global.open('https://example.com/terms', '_blank');
-    });
-    open('row-github', () => {
-      global.open('https://github.com/giangnam728828-rgb/raccoon-mobile', '_blank');
-    });
+    // privacy / terms / github 现在是 <a target=_system>，交给原生浏览器，不用 JS 拦截
     open('row-logout', async () => {
       const ok = await RC.confirmBox('退出登录？本地对话记录会保留。', {
         okText: '退出', danger: true,

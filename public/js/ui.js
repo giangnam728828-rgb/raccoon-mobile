@@ -1,5 +1,5 @@
 /* ============================================================
-   小浣熊 v4.0 · 壳：视图切换 / 标签页 / 主题 / 弹层装配
+   v6 · 壳：视图切换 / 工作区导航 / 主题 / 弹层装配
    ============================================================ */
 (function (global) {
   'use strict';
@@ -8,13 +8,19 @@
   const S = RC.state;
   const { $, $$ } = RC;
 
-  // ---------- 视图 ----------
+  // 视图（login 现在是弹层，app 是主应用）
   function showView(name) {
     $$('.view').forEach((v) => v.classList.toggle('on', v.id === name));
   }
 
-  // ---------- 标签页 ----------
-  const PANES = { chat: 'pane-chat', history: 'pane-history', me: 'pane-me' };
+  // 工作区导航：chat / history / files / device / me
+  const PANES = {
+    chat: 'pane-chat',
+    history: 'pane-history',
+    files: 'pane-files',
+    device: 'pane-device',
+    me: 'pane-me',
+  };
 
   function setTab(name, opts) {
     if (!PANES[name]) return;
@@ -24,29 +30,44 @@
       const p = $(PANES[k]);
       if (p) p.classList.toggle('on', k === name);
     });
-    $$('.tab').forEach((t) => {
+    $$('.rail-btn').forEach((t) => {
       const on = t.getAttribute('data-tab') === name;
-      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      t.classList.toggle('on', on);
+      t.setAttribute('aria-current', on ? 'page' : 'false');
     });
 
     if (name === 'history') RC.renderHistory && RC.renderHistory();
     if (name === 'me') RC.renderMe && RC.renderMe();
+    if (name === 'files') RC.fmInit && RC.fmInit();
+    if (name === 'device') RC.checkDeviceSupport && RC.checkDeviceSupport();
     if (name === 'chat') {
       RC.scrollBottom && RC.scrollBottom(true);
       S.unread = 0;
       RC.updateJump && RC.updateJump();
     }
     if (!silent) RC.haptic && RC.haptic(6);
+
+    // 记住当前工作区
+    try { localStorage.setItem('raccoon.tab', name); } catch {}
+  }
+
+  // 显示登录弹层（不再整屏）
+  function showLogin() {
+    const l = $('login');
+    if (l) l.classList.add('on');
+  }
+  function hideLogin() {
+    const l = $('login');
+    if (l) l.classList.remove('on');
   }
 
   // ---------- 主题 ----------
-  const THEME_NAMES = { auto: '跟随系统', light: '浅色', dark: '深色' };
+  const THEME_NAMES = { auto: '跟随系统', dark: '深色', light: '浅色' };
   const darkQuery = global.matchMedia ? global.matchMedia('(prefers-color-scheme: dark)') : null;
 
   function effectiveTheme() {
     const t = S.prefs.theme;
-    if (t === 'dark') return 'dark';
-    if (t === 'light') return 'light';
+    if (t === 'dark' || t === 'light') return t;
     return darkQuery && darkQuery.matches ? 'dark' : 'light';
   }
 
@@ -54,7 +75,7 @@
     const t = effectiveTheme();
     document.documentElement.setAttribute('data-theme', t);
     const meta = $('theme-color');
-    if (meta) meta.setAttribute('content', t === 'dark' ? '#171315' : '#faf1ee');
+    if (meta) meta.setAttribute('content', t === 'dark' ? '#0b0b0d' : '#faf9f6');
     const metaCS = document.querySelector('meta[name="color-scheme"]');
     if (metaCS) metaCS.setAttribute('content', t === 'dark' ? 'dark' : 'light');
   }
@@ -68,31 +89,25 @@
   }
 
   if (darkQuery) {
-    const onScheme = () => {
-      if (S.prefs.theme === 'auto') applyTheme();
-    };
+    const onScheme = () => { if (S.prefs.theme === 'auto') applyTheme(); };
     if (darkQuery.addEventListener) darkQuery.addEventListener('change', onScheme);
     else if (darkQuery.addListener) darkQuery.addListener(onScheme);
   }
 
   // ---------- 字号 ----------
   const FONT_STEPS = [
-    { v: 1, name: '标准', px: 16 },
-    { v: 1.08, name: '偏大', px: 17.5 },
+    { v: 1, name: '标准', px: 15 },
+    { v: 1.08, name: '偏大', px: 17 },
     { v: 1.18, name: '最大', px: 19 },
   ];
-
   function fontStepName() {
     const f = FONT_STEPS.find((x) => Math.abs(x.v - S.prefs.fontScale) < 0.01);
     return f ? f.name : '标准';
   }
-
   function applyFontScale() {
     const f = FONT_STEPS.find((x) => Math.abs(x.v - S.prefs.fontScale) < 0.01) || FONT_STEPS[0];
-    document.documentElement.style.setProperty('--reading', f.px + 'px');
-    document.documentElement.style.setProperty('--reading-lh', f.v >= 1.18 ? '1.78' : '1.72');
+    document.documentElement.style.setProperty('--reading-size', f.px + 'px');
   }
-
   function cycleFontScale() {
     const i = FONT_STEPS.findIndex((x) => Math.abs(x.v - S.prefs.fontScale) < 0.01);
     const next = FONT_STEPS[(i + 1) % FONT_STEPS.length];
@@ -103,16 +118,15 @@
     RC.toast('字号：' + next.name);
   }
 
-  // ---------- 弹层装配 ----------
+  // ---------- 弹层装配（幂等） ----------
   function bindOnce(el, key) {
     if (!el) return false;
-    if (el.dataset[`bound${key}`]) return false;
-    el.dataset[`bound${key}`] = '1';
+    if (el.dataset['bound' + key]) return false;
+    el.dataset['bound' + key] = '1';
     return true;
   }
 
   function bindSheets() {
-    // 点遮罩关闭 - Sheet
     $$('.sheet-scrim').forEach((scrim) => {
       if (!bindOnce(scrim, 'scrim')) return;
       scrim.addEventListener('click', () => {
@@ -120,14 +134,10 @@
         if (sheet && sheet.id) RC.closeSheet(sheet.id);
       });
     });
-
-    // 点遮罩关闭 - Confirm Dialog
-    $$('.confirm-backdrop').forEach((backdrop) => {
-      if (!bindOnce(backdrop, 'cfbackdrop')) return;
-      backdrop.addEventListener('click', () => RC.settleConfirm(false));
+    $$('.confirm-backdrop').forEach((bd) => {
+      if (!bindOnce(bd, 'cfbd')) return;
+      bd.addEventListener('click', () => RC.settleConfirm(false));
     });
-
-    // 关闭按钮
     $$('[data-close]').forEach((btn) => {
       if (btn.classList.contains('sheet-scrim') || btn.classList.contains('confirm-backdrop')) return;
       if (!bindOnce(btn, 'close')) return;
@@ -136,36 +146,21 @@
         if (sheet && sheet.id) RC.closeSheet(sheet.id);
       });
     });
-
-    // 确认框按钮
     const ok = $('confirm-ok');
-    if (ok && bindOnce(ok, 'ok')) {
-      ok.addEventListener('click', () => RC.settleConfirm(true));
-    }
+    if (ok && bindOnce(ok, 'ok')) ok.addEventListener('click', () => RC.settleConfirm(true));
     const cancel = $('confirm-cancel');
-    if (cancel && bindOnce(cancel, 'cancel')) {
-      cancel.addEventListener('click', () => RC.settleConfirm(false));
-    }
-
-    // 输入弹层按钮（文件管理新建/重命名用）
+    if (cancel && bindOnce(cancel, 'cancel')) cancel.addEventListener('click', () => RC.settleConfirm(false));
     const pOk = $('prompt-ok');
-    if (pOk && bindOnce(pOk, 'pok')) {
-      pOk.addEventListener('click', () => {
-        const v = $('prompt-default').value.trim();
-        RC.settlePrompt(v || null);
-      });
-    }
+    if (pOk && bindOnce(pOk, 'pok')) pOk.addEventListener('click', () => {
+      const v = $('prompt-default').value.trim();
+      RC.settlePrompt && RC.settlePrompt(v || null);
+    });
     const pCancel = $('prompt-cancel');
-    if (pCancel && bindOnce(pCancel, 'pcancel')) {
-      pCancel.addEventListener('click', () => RC.settlePrompt(null));
-    }
+    if (pCancel && bindOnce(pCancel, 'pcancel')) pCancel.addEventListener('click', () => RC.settlePrompt && RC.settlePrompt(null));
     const pdScrim = document.querySelector('#sheet-prompt .sheet-scrim');
-    if (pdScrim && bindOnce(pdScrim, 'pdScrim')) {
-      pdScrim.addEventListener('click', () => RC.settlePrompt(null));
-    }
+    if (pdScrim && bindOnce(pdScrim, 'pdscrim')) pdScrim.addEventListener('click', () => RC.settlePrompt && RC.settlePrompt(null));
   }
 
-  // ---------- 通用操作表 ----------
   function openActions(items) {
     const list = $('action-list');
     if (!list) return;
@@ -184,28 +179,20 @@
     RC.openSheet('sheet-actions');
   }
 
-  // ---------- 顶栏滚动阴影 ----------
   function bindScrollShade() {
-    const thread = $('thread');
-    const bar = $('chat-appbar');
-    if (!thread || !bar) return;
-    thread.addEventListener('scroll', () => {
-      bar.classList.toggle('scrolled', thread.scrollTop > 2);
-    }, { passive: true });
+    // v6 顶栏固定，无需滚动阴影
   }
 
-  // ---------- 返回键 ----------
   function onBack() {
-    if (RC.closeTopSheet()) return true;
-    if (S.tab !== 'chat') {
-      setTab('chat');
-      return true;
-    }
+    if (RC.closeTopSheet && RC.closeTopSheet()) return true;
+    const login = $('login');
+    if (login && login.classList.contains('on')) { hideLogin(); return true; }
+    if (S.tab !== 'chat') { setTab('chat'); return true; }
     return false;
   }
 
   Object.assign(RC, {
-    showView, setTab,
+    showView, setTab, showLogin, hideLogin,
     THEME_NAMES, FONT_STEPS,
     effectiveTheme, applyTheme, setTheme,
     fontStepName, applyFontScale, cycleFontScale,

@@ -1,195 +1,154 @@
 /* ============================================================
-   小浣熊 v5 · 设计令牌「纸与墨 · 第二版」
-   参考 Claude / Linear 的设计逻辑：暖白画布 + 发丝线 + 克制暖色强调
-   —— 去掉粗粉描边，靠色块与阅读节奏建立层级，而不是靠边框
+   小浣熊 v6 · CANVAS 设计系统
+   全新深色工具型界面：近黑画布 + 分层面板 + 单一暖色强调
+   参考 Linear 的软件工艺感，但用暖琥珀强调色（避开紫色 slop）
    ============================================================ */
 
-/* ===== Layer 1 · Core Colors（原始色板） ===== */
 :root {
-  /* 中性暖阶（画布 / 表面 / 发丝线 / 墨字 同源） */
-  --c-0:  #fcfbf8;   /* 最亮：raised */
-  --c-50: #faf9f5;   /* 画布 canvas */
-  --c-100:#f5f2ea;   /* 柔和区块 */
-  --c-150:#efebe1;   /* sunken */
-  --c-200:#e8e3d8;   /* 发丝线（比 v4 的粉线淡得多） */
-  --c-300:#d9d3c6;   /* 分隔线 / 禁用 */
-  --c-400:#b8b1a4;   /* 次要图标 */
-  --c-500:#8e8b82;   /* muted 文字 */
-  --c-600:#6c6a64;   /* secondary 文字 */
-  --c-700:#3d3d3a;   /* 正文 */
-  --c-800:#252523;   /* 强调文字 */
-  --c-900:#141413;   /* 墨 / 主按钮 */
+  /* ---- 中性阶（近黑冷灰，工具型） ---- */
+  --c-canvas:#0b0b0d;
+  --c-panel:#111114;
+  --c-panel-2:#17171b;
+  --c-panel-3:#1e1e23;
+  --c-hover:#26262c;
+  --c-active:#2e2e35;
+  --c-line:#24242a;
+  --c-line-2:#32323a;
+  --c-line-3:#42424b;
 
-  /* 品牌暖色（珊瑚笔尖，只用在强调与生成态） */
-  --accent-50: #fbf1ec;
-  --accent-100:#f6e3da;
-  --accent-400:#c97a5c;
-  --accent-500:#b85f42;
-  --accent-600:#9c4c33;
-  --accent-on: #fff;
+  --c-ink:#f2f1ee;
+  --c-ink-2:#c9c8c3;
+  --c-ink-3:#9a9992;
+  --c-ink-4:#6e6d68;
+  --c-ink-5:#4a4945;
 
-  /* 语义 */
-  --ok:#4f8a63; --ok-bg:#eaf3ed;
-  --warn:#a9782f; --warn-bg:#f7efdd;
-  --danger:#b4453f; --danger-bg:#f8e9e7;
+  /* ---- 强调：暖琥珀（唯一彩色） ---- */
+  --accent:#e08a5a;
+  --accent-hi:#f0a678;
+  --accent-lo:#b96a3e;
+  --accent-dim:rgba(224,138,90,.14);
+  --accent-line:rgba(224,138,90,.32);
 
-  /* 透明 */
-  --alpha-16: rgba(20,20,19,.16);
-  --alpha-32: rgba(20,20,19,.32);
-  --alpha-48: rgba(20,20,19,.48);
-  --alpha-64: rgba(20,20,19,.64);
-  --alpha-80: rgba(20,20,19,.80);
+  /* ---- 语义 ---- */
+  --ok:#5fbf87;
+  --ok-dim:rgba(95,191,135,.14);
+  --warn:#e0b45a;
+  --warn-dim:rgba(224,180,90,.14);
+  --danger:#e06b6b;
+  --danger-dim:rgba(224,107,107,.14);
+  --info:#6aa8e0;
+  --info-dim:rgba(106,168,224,.14);
+
+  /* ---- 语义令牌：表面 ---- */
+  --surface-base:var(--c-canvas);
+  --surface-panel:var(--c-panel);
+  --surface-raised:var(--c-panel-2);
+  --surface-hover:var(--c-hover);
+  --surface-active:var(--c-active);
+  --surface-sunken:#08080a;
+  --surface-accent:var(--accent-dim);
+  --surface-ok:var(--ok-dim);
+  --surface-warn:var(--warn-dim);
+  --surface-danger:var(--danger-dim);
+
+  /* ---- 语义令牌：文字 ---- */
+  --text-primary:var(--c-ink);
+  --text-secondary:var(--c-ink-2);
+  --text-body:var(--c-ink-3);
+  --text-muted:var(--c-ink-4);
+  --text-faint:var(--c-ink-5);
+  --text-accent:var(--accent);
+  --text-inverse:var(--c-canvas);
+
+  /* ---- 语义令牌：线 ---- */
+  --border-hairline:var(--c-line);
+  --border-divider:var(--c-line);
+  --border-strong:var(--c-line-2);
+  --border-focus:var(--accent);
+  --border-accent:var(--accent-line);
+
+  /* ---- 图标 ---- */
+  --icon-primary:var(--c-ink-2);
+  --icon-secondary:var(--c-ink-3);
+  --icon-muted:var(--c-ink-4);
+  --icon-accent:var(--accent);
+
+  /* ---- 动作 ---- */
+  --action-primary:var(--c-ink);
+  --action-primary-hover:#fff;
+  --action-accent:var(--accent);
+  --action-accent-hover:var(--accent-hi);
+  --action-danger:var(--danger);
+
+  /* ---- 阴影（深色下极淡） ---- */
+  --shadow-sm:0 1px 3px rgba(0,0,0,.4);
+  --shadow-md:0 8px 24px rgba(0,0,0,.5);
+  --shadow-lg:0 16px 48px rgba(0,0,0,.6);
+  --shadow-focus:0 0 0 2px var(--c-canvas),0 0 0 4px var(--accent-line);
+  --overlay:rgba(0,0,0,.68);
+
+  /* ---- 间距 4px ---- */
+  --s-1:4px;--s-2:8px;--s-3:12px;--s-4:16px;--s-5:20px;
+  --s-6:24px;--s-7:32px;--s-8:40px;--s-9:48px;--s-10:64px;
+  --gutter:16px;
+  --gap-xs:4px;--gap-sm:8px;--gap-md:12px;--gap-lg:16px;--gap-xl:24px;--gap-2xl:32px;
+
+  /* ---- 圆角 ---- */
+  --r-xs:6px;--r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:20px;
+  --r-sheet:20px;--r-full:999px;
+  --r-card:var(--r-md);--r-control:var(--r-sm);
+
+  /* ---- 字体 ---- */
+  --font:-apple-system,BlinkMacSystemFont,"HarmonyOS Sans SC","PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+
+  --style-h1:600 28px/1.2 var(--font);
+  --style-h2:600 22px/1.3 var(--font);
+  --style-h3:600 17px/1.4 var(--font);
+  --style-title:500 15px/1.4 var(--font);
+  --style-body:400 14px/1.6 var(--font);
+  --style-body-strong:500 14px/1.55 var(--font);
+  --style-caption:500 12px/1.5 var(--font);
+  --style-caption-2:400 12px/1.5 var(--font);
+  --style-btn:500 14px/1.4 var(--font);
+  --style-btn-sm:500 12px/1.4 var(--font);
+  --fs-xs:12px;--fs-sm:13px;--fs-base:14px;--fs-md:15px;--fs-lg:17px;--fs-xl:20px;
+
+  --reading-size:15px;
+  --reading-line:1.7;
+
+  /* ---- 动效 ---- */
+  --ease:cubic-bezier(.22,1,.36,1);
+  --ease-out:cubic-bezier(.16,1,.3,1);
+  --t-fast:140ms;
+  --t-mid:280ms;
+  --t-slow:440ms;
+  --t-colors:color var(--t-fast) var(--ease),background-color var(--t-fast) var(--ease),border-color var(--t-fast) var(--ease);
+  --t-transform:transform var(--t-mid) var(--ease);
+  --t-sheet:transform var(--t-mid) var(--ease-out);
+  --transition-card:transform var(--t-fast) var(--ease),box-shadow var(--t-fast) var(--ease);
+
+  /* ---- 结构 ---- */
+  --sa-t:env(safe-area-inset-top,0px);
+  --sa-b:env(safe-area-inset-bottom,0px);
+  --topbar-h:52px;
+  --dock-h:64px;
+  --rail-w:64px;
+  --z-appbar:100;--z-composer:110;--z-toast:200;--z-sheet:300;--z-modal:400;--z-lightbox:500;--z-boot:600;
 }
 
-:root[data-theme="dark"] {
-  --c-0:  #262521;
-  --c-50: #1f1e1b;
-  --c-100:#242320;
-  --c-150:#2b2a26;
-  --c-200:#35342f;
-  --c-300:#45443e;
-  --c-400:#6c6a62;
-  --c-500:#8e8b82;
-  --c-600:#a09d96;
-  --c-700:#c9c6bd;
-  --c-800:#e8e5dd;
-  --c-900:#faf9f5;
-
-  --accent-50: #33221b;
-  --accent-100:#452e24;
-  --accent-400:#d68a6c;
-  --accent-500:#e09a7d;
-  --accent-600:#efb49b;
-  --accent-on: #1f1e1b;
-
-  --ok:#7fbb95; --ok-bg:#1e2b22;
-  --warn:#d9ab6d; --warn-bg:#2c2618;
-  --danger:#e0857f; --danger-bg:#31201f;
-  --alpha-16: rgba(255,255,255,.16);
-  --alpha-32: rgba(255,255,255,.32);
-  --alpha-48: rgba(255,255,255,.48);
-  --alpha-64: rgba(255,255,255,.64);
-  --alpha-80: rgba(255,255,255,.80);
-}
-
-/* ===== Layer 2 · Color System（语义） ===== */
-:root {
-  /* 表面：靠色块，不靠描边 */
-  --surface-base: var(--c-50);
-  --surface-raised: var(--c-0);
-  --surface-sunken: var(--c-100);
-  --surface-hover: var(--c-100);
-  --surface-pressed: var(--c-150);
-  --surface-selected: var(--accent-50);
-  --surface-accent: var(--accent-50);
-  --surface-error: var(--danger-bg);
-  --surface-success: var(--ok-bg);
-  --surface-warning: var(--warn-bg);
-
-  /* 边框：极淡发丝线，全周，不用粉色 */
-  --border-hairline: var(--c-200);
-  --border-divider: var(--c-200);
-  --border-strong: var(--c-300);
-  --border-focus: var(--accent-500);
-  --border-error: var(--danger);
-
-  /* 文字 */
-  --text-primary: var(--c-900);
-  --text-body: var(--c-700);
-  --text-secondary: var(--c-600);
-  --text-muted: var(--c-500);
-  --text-inverse: var(--c-50);
-  --text-accent: var(--accent-600);
-  --text-error: var(--danger);
-  --text-success: var(--ok);
-  --text-warning: var(--warn);
-
-  /* 图标 */
-  --icon-primary: var(--c-700);
-  --icon-secondary: var(--c-500);
-  --icon-muted: var(--c-400);
-  --icon-accent: var(--accent-500);
-
-  /* 动作 */
-  --action-primary: var(--c-900);
-  --action-primary-hover: var(--c-800);
-  --action-primary-pressed: var(--c-700);
-  --action-accent: var(--accent-500);
-  --action-accent-hover: var(--accent-600);
-  --action-secondary: var(--c-100);
-  --action-danger: var(--danger);
-
-  /* 遮罩 / 阴影（极淡） */
-  --overlay: var(--alpha-48);
-  --shadow-sm: 0 1px 2px rgba(20,20,19,.05);
-  --shadow-md: 0 4px 16px rgba(20,20,19,.08);
-  --shadow-focus: 0 0 0 3px var(--accent-100);
-}
-
-/* ===== Spacing · 4px 网格 ===== */
-:root {
-  --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:20px;
-  --s-6:24px; --s-7:32px; --s-8:40px; --s-9:48px;
-  --gutter: 20px;
-  --gap-xs:var(--s-1); --gap-sm:var(--s-2); --gap-md:var(--s-3);
-  --gap-lg:var(--s-4); --gap-xl:var(--s-6); --gap-2xl:var(--s-8);
-}
-
-/* ===== Radius · 温和圆角（不全 pill） ===== */
-:root {
-  --r-xs:6px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-xl:20px;
-  --r-sheet:22px; --r-full:999px;
-}
-
-/* ===== Typography · 标准阶梯 ===== */
-:root {
-  --font: -apple-system, BlinkMacSystemFont, "HarmonyOS Sans SC", "PingFang SC", "Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", system-ui, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
-  --fs-xs:12px; --fs-sm:14px; --fs-base:15px; --fs-md:16px;
-  --fs-lg:18px; --fs-xl:20px; --fs-2xl:24px; --fs-3xl:30px;
-
-  --style-h1: 600 30px/1.2 var(--font);
-  --style-h2: 600 24px/1.3 var(--font);
-  --style-h3: 600 20px/1.35 var(--font);
-  --style-h4: 600 18px/1.4 var(--font);
-  --style-h5: 600 16px/1.4 var(--font);
-  --style-title: 500 16px/1.45 var(--font);
-  --style-body: 400 15px/1.62 var(--font);
-  --style-body-strong: 500 15px/1.55 var(--font);
-  --style-caption: 500 12px/1.5 var(--font);
-  --style-caption-2: 400 12px/1.5 var(--font);
-  --style-btn: 500 15px/1.4 var(--font);
-  --style-btn-sm: 500 13px/1.4 var(--font);
-
-  --reading-size: 16px;
-  --reading-line: 1.7;
-}
-
-/* ===== Motion ===== */
-:root {
-  --ease: cubic-bezier(.22,1,.36,1);
-  --t-fast: 140ms;
-  --t-mid: 260ms;
-  --t-colors: color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
-  --t-transform: transform var(--t-fast) var(--ease);
-}
-
-/* ===== Layout ===== */
-:root {
-  --sa-t: env(safe-area-inset-top,0px);
-  --sa-b: env(safe-area-inset-bottom,0px);
-  --tabbar-h: 60px;
-  --appbar-h: 52px;
-  --z-appbar:100; --z-composer:110; --z-toast:200; --z-sheet:300;
-  --z-modal:400; --z-lightbox:500; --z-boot:600;
-}
-
-/* ===== 兼容别名（旧 JS / 内联样式仍在用，集中映射，避免散落硬编码） ===== */
-:root {
-  --border-primary: var(--border-hairline);
-  --r-card: var(--r-lg);
-  --r-control: var(--r-md);
-  --shadow-lg: var(--shadow-md);
-  --transition-card: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
-  --style-body4: 500 14px/1.5 var(--font);
+/* ---- 浅色主题（可切换） ---- */
+:root[data-theme="light"] {
+  --c-canvas:#faf9f6;--c-panel:#fff;--c-panel-2:#f4f2ed;--c-panel-3:#ece9e1;
+  --c-hover:#e9e6de;--c-active:#e2ded4;--c-line:#e6e2d9;--c-line-2:#d8d3c8;--c-line-3:#c4bdb0;
+  --c-ink:#1a1917;--c-ink-2:#3d3b37;--c-ink-3:#6a6761;--c-ink-4:#96918a;--c-ink-5:#b8b3ab;
+  --accent:#b8623a;--accent-hi:#9c502c;--accent-lo:#d98a62;
+  --accent-dim:rgba(184,98,58,.10);--accent-line:rgba(184,98,58,.28);
+  --action-primary:#1a1917;--action-primary-hover:#000;
+  --text-inverse:#fff;
+  --surface-sunken:#f0ede6;
+  --shadow-sm:0 1px 3px rgba(20,19,17,.06);
+  --shadow-md:0 8px 24px rgba(20,19,17,.1);
+  --shadow-lg:0 16px 48px rgba(20,19,17,.14);
+  --overlay:rgba(20,19,17,.42);
 }

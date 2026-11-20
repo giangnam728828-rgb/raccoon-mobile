@@ -1,16 +1,16 @@
 <!doctype html>
-<html lang="zh-CN" data-theme="light">
+<html lang="zh-CN" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#faf1ee" id="theme-color">
-<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0b0b0d" id="theme-color">
+<meta name="color-scheme" content="dark light">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="小浣熊">
 <meta name="format-detection" content="telephone=no">
-<meta name="description" content="小浣熊移动端：多模型对话、深度思考、图片与文件问答、代码运行、文件管理。">
-<title>小浣熊</title>
+<meta name="description" content="小浣熊 · 手机上的 AI 工作台：对话、文件、设备、代码。">
+<title>小浣熊 · AI 工作台</title>
 <link rel="icon" href="/img/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <link rel="stylesheet" href="/css/tokens.css">
@@ -19,9 +19,6 @@
 </head>
 <body>
 
-<!-- ============================================================
-     图标集：单一套系，1.5 描边
-     ============================================================ -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5.8h16v10.4H9.6L4 20.2z"/></symbol>
   <symbol id="i-history" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7.8V12l3.1 1.9"/></symbol>
@@ -80,395 +77,247 @@
   <symbol id="i-github" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.866-.013-1.7-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></symbol>
 </svg>
 
-<!-- ============================================================
-     启动屏
-     ============================================================ -->
+<!-- 启动动画：图标 morph + 品牌名，无需登录页 -->
 <div id="boot">
-  <div class="boot-art"><img src="/img/brand-sm.jpg" alt="" width="88" height="88"></div>
-  <p class="boot-name">小浣熊</p>
+  <div class="boot-mark">
+    <div class="boot-ring"></div>
+    <img src="/img/brand-sm.jpg" alt="" width="72" height="72">
+  </div>
+  <div class="boot-word">小浣熊</div>
+  <div class="boot-sub">AI WORKSPACE</div>
 </div>
 
-<!-- 强保底：与业务脚本无关，任何情况下 1.5s 内必须收起启动层，杜绝卡死。 -->
-<script>
-  (function () {
-    setTimeout(function () {
-      try {
-        var b = document.getElementById('boot');
-        if (b) {
-          b.classList.add('gone');
-          setTimeout(function () { b.style.display = 'none'; }, 300);
-        }
-      } catch (e) { /* 忽略 */ }
-    }, 1500);
-  })();
-</script>
-
-<!-- ============================================================
-     登录页
-     ============================================================ -->
-<section id="login" class="view">
-  <div class="login-scroll">
-    <header class="login-brand">
-      <div class="login-art"><img src="/img/brand-sm.jpg" alt="" width="100" height="100"></div>
-      <h1>小浣熊</h1>
-      <p class="tagline">你的 AI 工作台</p>
-    </header>
-
+<!-- 登录弹层：仅在需要鉴权时从底部升起，不再占据首屏 -->
+<div id="login" class="view modal-view">
+  <div class="login-card">
+    <div class="login-grip"></div>
+    <div class="login-head">
+      <div class="login-logo"><img src="/img/brand-sm.jpg" alt="" width="44" height="44"></div>
+      <div>
+        <div class="login-title">登录以继续</div>
+        <div class="login-sub">使用手机号访问你的 AI 工作台</div>
+      </div>
+      <button id="btn-login-close" class="icon-btn sm" type="button" aria-label="关闭"><svg class="i"><use href="#i-close"/></svg></button>
+    </div>
     <div class="login-form">
       <div class="field">
         <label for="phone">手机号</label>
         <div class="field-row">
           <select id="nation" class="input nation" aria-label="国家或地区代码"></select>
-          <input id="phone" class="input" type="tel" inputmode="numeric"
-                 autocomplete="tel" placeholder="请输入手机号" maxlength="20">
+          <input id="phone" class="input" type="tel" inputmode="numeric" autocomplete="tel" placeholder="请输入手机号" maxlength="20">
         </div>
       </div>
-
       <div class="field">
-        <label for="code">短信验证码</label>
+        <label for="code">验证码</label>
         <div class="field-row">
-          <input id="code" class="input" type="text" inputmode="numeric"
-                 autocomplete="one-time-code" placeholder="6 位验证码" maxlength="8">
-          <button id="btn-send-code" class="btn-code" type="button">获取验证码</button>
+          <input id="code" class="input" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="6 位验证码" maxlength="8">
+          <button id="btn-send-code" class="btn btn-accent btn-md" type="button">获取验证码</button>
         </div>
       </div>
-
       <button id="btn-login" class="btn btn-primary btn-md btn-block" type="button">登录 / 注册</button>
       <p class="login-hint">未注册的手机号将自动创建账号</p>
     </div>
-
-    <div class="login-alt">
-      <button id="btn-token-toggle" class="btn btn-ghost btn-md" type="button">
-        <svg class="i i-sm"><use href="#i-key"/></svg>
-        <span>使用 Token 登录</span>
-      </button>
-    </div>
-
+    <button id="btn-token-toggle" class="btn btn-ghost btn-sm" type="button"><svg class="i i-sm"><use href="#i-key"/></svg>使用 Token 登录</button>
     <div id="token-panel" class="hidden">
       <div class="field">
         <label for="token-input">访问令牌</label>
-        <textarea id="token-input" class="input" placeholder="粘贴 access_token（JWT，可带 Bearer 前缀）"
-                  spellcheck="false" autocapitalize="off" autocorrect="off" rows="3"></textarea>
+        <textarea id="token-input" class="input" placeholder="粘贴 access_token" spellcheck="false" rows="3"></textarea>
       </div>
-      <button id="btn-token-go" class="btn btn-primary btn-md btn-block" type="button">登录</button>
+      <button id="btn-token-go" class="btn btn-accent btn-md btn-block" type="button">登录</button>
     </div>
-
     <p id="login-msg" class="login-msg hidden" role="alert"></p>
-
-    <footer class="login-foot">
-      <span id="login-mode" class="mono">自动 · 直连官方</span>
-      <span class="sep">·</span>
+    <div class="login-foot">
+      <span id="login-mode" class="mono">直连官方</span><span class="sep">·</span>
       <button id="btn-diag" class="btn btn-ghost btn-sm" type="button">诊断</button>
-    </footer>
+    </div>
   </div>
-
   <div id="cap-element"></div>
   <button id="cap-button" type="button" hidden>captcha</button>
-</section>
+</div>
 
-<!-- ============================================================
-     主应用
-     ============================================================ -->
+<!-- 主应用 -->
 <section id="app" class="view">
 
-  <!-- ---------- 对话 ---------- -->
+  <!-- 左侧导航导轨 -->
+  <nav class="rail" aria-label="工作区导航">
+    <button class="rail-btn on" data-tab="chat" aria-label="对话" title="对话">
+      <svg class="i"><use href="#i-chat"/></svg><span>对话</span>
+    </button>
+    <button class="rail-btn" data-tab="history" aria-label="记录" title="记录">
+      <svg class="i"><use href="#i-history"/></svg><span>记录</span>
+    </button>
+    <button class="rail-btn" data-tab="files" aria-label="文件" title="文件">
+      <svg class="i"><use href="#i-folder"/></svg><span>文件</span>
+    </button>
+    <button class="rail-btn" data-tab="device" aria-label="设备" title="设备">
+      <svg class="i"><use href="#i-phone"/></svg><span>设备</span>
+    </button>
+    <button class="rail-btn" data-tab="me" aria-label="我的" title="我的">
+      <svg class="i"><use href="#i-user"/></svg><span>我的</span>
+    </button>
+  </nav>
+
+  <!-- 对话工作区 -->
   <div class="pane on" id="pane-chat">
-    <header class="appbar" id="chat-appbar">
-      <div class="appbar-row">
-        <div class="appbar-title">
-          <span class="status-dot" id="status-dot" aria-hidden="true"></span>
-          <span class="t" id="chat-title">新对话</span>
-        </div>
-        <div class="appbar-actions">
-          <button id="btn-points" class="pill" type="button" aria-label="剩余积分">
-            <svg class="i"><use href="#i-coin"/></svg><span id="points" class="lbl tnum">—</span>
-          </button>
-          <button id="btn-new" class="icon-btn" type="button" aria-label="新建对话">
-            <svg class="i"><use href="#i-edit"/></svg>
-          </button>
-        </div>
+    <header class="topbar" id="chat-appbar">
+      <button class="topbar-menu" id="btn-menu" type="button" aria-label="会话菜单"><svg class="i"><use href="#i-more"/></svg></button>
+      <div class="topbar-title">
+        <span class="status-dot" id="status-dot" aria-hidden="true"></span>
+        <span class="t" id="chat-title">新对话</span>
       </div>
-      <div class="appbar-row sub">
-        <button id="btn-model" class="pill model" type="button" aria-label="模型与思考强度">
-          <svg class="i"><use href="#i-spark"/></svg>
-          <span id="model-name" class="lbl">选择模型</span>
-          <span class="pill-div" aria-hidden="true"></span>
-          <span id="effort-name" class="lbl sub">思考关</span>
-          <svg class="i"><use href="#i-down"/></svg>
-        </button>
-        <button id="btn-effort" class="icon-btn sm" type="button" aria-label="深度思考强度" hidden>
-          <svg class="i"><use href="#i-bolt"/></svg>
-        </button>
+      <div class="topbar-actions">
+        <button id="btn-points" class="chip" type="button"><svg class="i i-sm"><use href="#i-coin"/></svg><span id="points" class="tnum">—</span></button>
+        <button id="btn-new" class="icon-btn" type="button" aria-label="新建对话"><svg class="i"><use href="#i-plus"/></svg></button>
       </div>
     </header>
-
+    <div class="modelbar">
+      <button id="btn-model" class="chip model" type="button">
+        <svg class="i i-sm"><use href="#i-spark"/></svg>
+        <span id="model-name" class="lbl">选择模型</span>
+        <span class="chip-div"></span>
+        <span id="effort-name" class="lbl sub">思考关</span>
+        <svg class="i i-sm"><use href="#i-down"/></svg>
+      </button>
+      <button id="btn-effort" class="icon-btn sm" type="button" aria-label="深度思考" hidden><svg class="i"><use href="#i-bolt"/></svg></button>
+    </div>
     <main id="thread" class="thread" role="log" aria-live="polite"></main>
-
-    <button id="jump-bottom" class="jump-bottom hidden" type="button" aria-label="回到底部">
-      <svg class="i i-sm"><use href="#i-down"/></svg>
-      <span class="badge hidden" id="new-count">0</span>
-    </button>
-
+    <button id="jump-bottom" class="jump-bottom hidden" type="button" aria-label="回到底部"><svg class="i i-sm"><use href="#i-down"/></svg><span class="badge hidden" id="new-count">0</span></button>
     <div class="composer">
       <div class="composer-inner" id="composer-inner">
         <div id="draft" class="draft-att hidden"></div>
         <div class="composer-top">
-          <textarea id="input" rows="1" placeholder="发消息…" enterkeyhint="send"
-                    aria-label="消息输入框"></textarea>
+          <textarea id="input" rows="1" placeholder="发送消息…" enterkeyhint="send" aria-label="消息输入框"></textarea>
           <button id="btn-send" class="send-btn" type="button" disabled aria-label="发送">
             <svg class="i i-md ico-send"><use href="#i-send"/></svg>
             <svg class="i i-md ico-stop"><use href="#i-stop"/></svg>
           </button>
         </div>
         <div class="composer-tools">
-          <button id="btn-attach" class="icon-btn sm" type="button" aria-label="添加图片或文件">
-            <svg class="i"><use href="#i-plus"/></svg>
-          </button>
-          <button id="btn-voice" class="icon-btn sm" type="button" aria-label="语音输入">
-            <svg class="i"><use href="#i-mic"/></svg>
-          </button>
-          <button id="btn-file" class="icon-btn sm" type="button" aria-label="文件管理">
-            <svg class="i"><use href="#i-folder"/></svg>
-          </button>
+          <button id="btn-attach" class="icon-btn sm" type="button" aria-label="添加附件"><svg class="i"><use href="#i-plus"/></svg></button>
+          <button id="btn-voice" class="icon-btn sm" type="button" aria-label="语音输入"><svg class="i"><use href="#i-mic"/></svg></button>
           <div class="spacer"></div>
-          <button id="btn-think" class="think-badge hidden" type="button" tabindex="-1" aria-hidden="true">
-            <svg class="i"><use href="#i-spark"/></svg><span id="think-label">思考关</span>
-          </button>
+          <span class="composer-hint">深度思考 <span id="think-label">关</span></span>
+          <button id="btn-think" class="think-badge hidden" type="button" tabindex="-1" aria-hidden="true"><svg class="i"><use href="#i-spark"/></svg></button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ---------- 记录 ---------- -->
+  <!-- 记录工作区 -->
   <div class="pane" id="pane-history">
-    <header class="appbar">
-      <div class="appbar-row">
-        <div class="appbar-title"><span class="t">对话记录</span></div>
-        <div class="appbar-actions">
-          <button id="btn-history-new" class="icon-btn" type="button" aria-label="新建对话">
-            <svg class="i"><use href="#i-plus"/></svg>
-          </button>
-        </div>
-      </div>
-      <div class="appbar-row sub">
-        <div class="search-bar">
-          <svg class="i i-sm"><use href="#i-search"/></svg>
-          <input id="history-search" type="search" placeholder="搜索标题或内容" enterkeyhint="search">
-        </div>
+    <header class="topbar">
+      <div class="topbar-title"><span class="t">对话记录</span></div>
+      <div class="topbar-actions">
+        <button id="btn-history-new" class="icon-btn" type="button" aria-label="新建对话"><svg class="i"><use href="#i-plus"/></svg></button>
       </div>
     </header>
+    <div class="pane-search"><div class="search-bar"><svg class="i i-sm"><use href="#i-search"/></svg><input id="history-search" type="search" placeholder="搜索标题或内容" enterkeyhint="search"></div></div>
     <main id="history-list" class="scroll-list"></main>
   </div>
 
-  <!-- ---------- 我的 ---------- -->
-  <div class="pane" id="pane-me">
-    <header class="appbar">
-      <div class="appbar-row">
-        <div class="appbar-title"><span class="t">我的</span></div>
-        <div class="appbar-actions">
-          <button id="btn-settings" class="icon-btn" type="button" aria-label="设置">
-            <svg class="i"><use href="#i-settings"/></svg>
-          </button>
-        </div>
+  <!-- 文件工作区（直接内嵌，不再藏在设置里） -->
+  <div class="pane" id="pane-files">
+    <header class="topbar">
+      <div class="topbar-title"><span class="t">文件</span></div>
+      <div class="topbar-actions">
+        <button id="file-new-folder-2" class="icon-btn" type="button" aria-label="新建文件夹"><svg class="i"><use href="#i-plus"/></svg></button>
+        <button id="file-upload-2" class="icon-btn" type="button" aria-label="上传"><svg class="i"><use href="#i-upload"/></svg></button>
+      </div>
+    </header>
+    <main class="scroll-list" style="padding:0"><div id="file-manager" style="height:100%;display:flex;flex-direction:column"></div></main>
+  </div>
+
+  <!-- 设备工作区（直接内嵌） -->
+  <div class="pane" id="pane-device">
+    <header class="topbar">
+      <div class="topbar-title"><span class="t">设备控制</span></div>
+      <div class="topbar-actions">
+        <button id="dev-open-settings" class="icon-btn" type="button" aria-label="无障碍设置"><svg class="i"><use href="#i-settings"/></svg></button>
       </div>
     </header>
     <main class="scroll-list">
-      <div class="profile">
-        <div class="avatar-wrap">
-          <div class="avatar avatar-lg"><img src="/img/brand-sm.jpg" alt="" width="56" height="56"></div>
-        </div>
-        <div class="profile-info">
-          <div class="nm" id="me-name">小浣熊</div>
-          <div class="sub" id="me-phone">—</div>
-        </div>
+      <div class="dev-status" id="dev-status"><span class="dev-dot" aria-hidden="true"></span><span id="dev-status-text">检测设备能力…</span></div>
+      <div class="group-label">屏幕</div>
+      <div class="dev-actions">
+        <button id="dev-dump" class="btn btn-secondary btn-md" type="button"><svg class="i i-sm"><use href="#i-eye"/></svg>读取屏幕</button>
+        <button id="dev-copy-dump" class="btn btn-ghost btn-md" type="button"><svg class="i i-sm"><use href="#i-copy"/></svg>复制结果</button>
       </div>
-
-      <div class="stat-row">
-        <div class="stat"><span class="num tnum" id="st-points">—</span><span class="lbl">剩余积分</span></div>
-        <div class="stat"><span class="num tnum" id="st-chats">—</span><span class="lbl">对话</span></div>
-        <div class="stat"><span class="num tnum" id="st-msgs">—</span><span class="lbl">消息</span></div>
+      <pre id="dev-output" class="dev-output" aria-live="polite">尚未读取。点「读取屏幕」获取当前界面的所有可交互元素。</pre>
+      <div class="group-label">按键</div>
+      <div class="dev-keys">
+        <button class="btn btn-secondary btn-md" data-devkey="back" type="button">返回</button>
+        <button class="btn btn-secondary btn-md" data-devkey="home" type="button">主页</button>
+        <button class="btn btn-secondary btn-md" data-devkey="recents" type="button">任务</button>
+        <button class="btn btn-secondary btn-md" data-devkey="notifications" type="button">通知</button>
       </div>
-
-      <div class="group">
-        <div class="group-label">对话</div>
-        <button class="setting-row" id="row-model" type="button">
-          <svg class="i icon"><use href="#i-spark"/></svg>
-          <span class="lbl">默认模型</span>
-          <span class="val" id="set-model">—</span>
-          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
-        </button>
-        <button class="setting-row" id="row-effort" type="button">
-          <svg class="i icon"><use href="#i-bolt"/></svg>
-          <span class="lbl">深度思考</span>
-          <span class="val" id="set-effort">—</span>
-          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
-        </button>
-        <button class="setting-row" id="row-system" type="button">
-          <svg class="i icon"><use href="#i-pen"/></svg>
-          <span class="lbl">系统提示词</span>
-          <span class="val" id="set-system">未设置</span>
-          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
-        </button>
-        <button class="setting-row" id="row-prompts" type="button">
-          <svg class="i icon"><use href="#i-inbox"/></svg>
-          <span class="lbl">提示词库</span>
-          <span class="val" id="set-prompts">—</span>
-          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
-        </button>
-      </div>
-
-      <div class="group">
-        <div class="group-label">外观</div>
-        <button class="setting-row" id="row-theme" type="button">
-          <svg class="i icon"><use href="#i-palette"/></svg>
-          <span class="lbl">主题</span>
-          <span class="val" id="set-theme">跟随系统</span>
-          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
-        </button>
-        <button class="setting-row" id="row-fontsize" type="button">
-          <svg class="i icon"><use href="#i-type"/></svg>
-          <span class="lbl">正文字号</span>
-          <span class="val" id="set-fontsize">标准</span>
-          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
-        </button>
-      </div>
-
-      <div class="group">
-        <div class="group-label">数据</div>
-        <button class="setting-row" id="row-export" type="button">
-          <svg class="i icon"><use href="#i-share"/></svg>
-          <span class="lbl">导出当前对话</span>
-          <span class="val" id="set-export">Markdown</span>
-          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
-        </button>
-        <button class="setting-row" id="row-storage" type="button">
-          <svg class="i icon"><use href="#i-database"/></svg>
-          <span class="lbl">本地占用</span>
-          <span class="val" id="set-storage">—</span>
-          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
-        </button>
-        <button class="setting-row" id="row-backup" type="button">
-          <svg class="i icon"><use href="#i-upload"/></svg>
-          <span class="lbl">备份到服务端</span>
-          <span class="val" id="set-backup">未备份</span>
-          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
-        </button>
-        <button class="setting-row" id="row-restore" type="button">
-          <svg class="i icon"><use href="#i-download"/></svg>
-          <span class="lbl">从服务端恢复</span>
-          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
-        </button>
-        <button class="setting-row" id="row-files" type="button">
-          <svg class="i icon"><use href="#i-folder"/></svg>
-          <span class="lbl">文件管理</span>
-          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
-        </button>
-        <button class="setting-row" id="row-terminal" type="button">
-          <svg class="i icon"><use href="#i-terminal"/></svg>
-          <span class="lbl">终端 / 构建</span>
-          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
-        </button>
-        <button class="setting-row" id="row-git" type="button">
-          <svg class="i icon"><use href="#i-git"/></svg>
-          <span class="lbl">Git 版本控制</span>
-          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
-        </button>
-        <button class="setting-row" id="row-device" type="button">
-          <svg class="i icon"><use href="#i-phone"/></svg>
-          <span class="lbl">设备操作</span>
-          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
-        </button>
-        <button class="setting-row" id="row-plugins" type="button">
-          <svg class="i icon"><use href="#i-puzzle"/></svg>
-          <span class="lbl">插件</span>
-          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
-        </button>
-      </div>
-
-      <div class="group">
-        <div class="group-label">连接</div>
-        <button class="setting-row" id="row-conn" type="button">
-          <svg class="i icon"><use href="#i-link"/></svg>
-          <span class="lbl">连接状态</span>
-          <span class="val" id="set-conn">检测中…</span>
-          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
-        </button>
-        <button class="setting-row" id="row-channel" type="button">
-          <svg class="i icon"><use href="#i-database"/></svg>
-          <span class="lbl">通道</span>
-          <span class="val mono" id="set-channel">自动</span>
-          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
-        </button>
-      </div>
-
-      <div class="group">
-        <div class="group-label">积分</div>
-        <button class="setting-row" id="row-checkin" type="button">
-          <svg class="i icon"><use href="#i-coin"/></svg>
-          <span class="lbl">领取每日积分</span>
-          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
-        </button>
-        <button class="setting-row" id="row-onboarding" type="button">
-          <svg class="i icon"><use href="#i-coin"/></svg>
-          <span class="lbl">领取新手奖励</span>
-          <svg class="i chevron"><use href="#i-chevron-right"/></svg>
-        </button>
-      </div>
-
-      <div class="group">
-        <div class="group-label">关于</div>
-        <button class="setting-row" id="row-about" type="button">
-          <svg class="i icon"><use href="#i-info"/></svg>
-          <span class="lbl">版本信息</span>
-          <span class="val mono" id="set-version">—</span>
-        </button>
-        <a class="setting-row" id="row-privacy" href="https://xiaohuanxiong.com/privacy" target="_system" rel="noopener">
-          <svg class="i icon"><use href="#i-lock"/></svg>
-          <span class="lbl">隐私政策</span>
-          <svg class="i chevron"><use href="#i-link"/></svg>
-        </a>
-        <a class="setting-row" id="row-terms" href="https://xiaohuanxiong.com/terms" target="_system" rel="noopener">
-          <svg class="i icon"><use href="#i-file"/></svg>
-          <span class="lbl">用户协议</span>
-          <svg class="i chevron"><use href="#i-link"/></svg>
-        </a>
-        <a class="setting-row" id="row-github" href="https://github.com/giangnam728828-rgb/raccoon-mobile" target="_system" rel="noopener">
-          <svg class="i icon"><use href="#i-github"/></svg>
-          <span class="lbl">开源地址</span>
-          <svg class="i chevron"><use href="#i-link"/></svg>
-        </a>
-      </div>
-
-      <div class="group">
-        <button class="setting-row danger" id="row-logout" type="button">
-          <svg class="i icon"><use href="#i-exit"/></svg>
-          <span class="lbl">退出登录</span>
-        </button>
-      </div>
-
-      <p class="build-tag" id="build-tag">小浣熊移动端</p>
+      <div class="group-label">点击与输入</div>
+      <div class="field"><label for="dev-text">按文字查找并点击</label><div class="field-row"><input id="dev-text" class="input" placeholder="例如：设置"><button id="dev-tap-text" class="btn btn-accent btn-md" type="button">点击</button></div></div>
+      <div class="field" style="margin-top:var(--gap-md)"><label for="dev-xy">按坐标点击 / 滑动</label><div class="field-row"><input id="dev-xy" class="input" placeholder="x,y 或 x1,y1,x2,y2"><button id="dev-tap-xy" class="btn btn-accent btn-md" type="button">执行</button></div><p class="input-hint">两个坐标为点击，四个坐标为滑动。</p></div>
+      <p class="dev-note">设备控制需要系统无障碍服务：设置 → 无障碍 → 小浣熊 → 开启。</p>
     </main>
   </div>
 
-  <!-- ---------- 标签栏 ---------- -->
-  <nav class="tabbar" role="tablist" aria-label="主导航">
-    <button class="tab" data-tab="chat" role="tab" aria-selected="true" type="button">
-      <svg class="i"><use href="#i-chat"/></svg><span>对话</span>
-    </button>
-    <button class="tab" data-tab="history" role="tab" aria-selected="false" type="button">
-      <svg class="i"><use href="#i-history"/></svg><span>记录</span>
-    </button>
-    <button class="tab" data-tab="me" role="tab" aria-selected="false" type="button">
-      <svg class="i"><use href="#i-user"/></svg><span>我的</span>
-    </button>
-  </nav>
+  <!-- 我的工作区 -->
+  <div class="pane" id="pane-me">
+    <header class="topbar">
+      <div class="topbar-title"><span class="t">我的</span></div>
+      <div class="topbar-actions"><button id="btn-settings" class="icon-btn" type="button" aria-label="设置"><svg class="i"><use href="#i-settings"/></svg></button></div>
+    </header>
+    <main class="scroll-list">
+      <div class="profile"><div class="avatar avatar-lg"><img src="/img/brand-sm.jpg" alt="" width="56" height="56"></div><div class="profile-info"><div class="nm" id="me-name">小浣熊</div><div class="sub" id="me-phone">未登录 · 点此登录</div></div></div>
+      <div class="stat-row"><div class="stat"><span class="num tnum" id="st-points">—</span><span class="lbl">积分</span></div><div class="stat"><span class="num tnum" id="st-chats">—</span><span class="lbl">对话</span></div><div class="stat"><span class="num tnum" id="st-msgs">—</span><span class="lbl">消息</span></div></div>
+      <div class="group"><div class="group-label">对话</div>
+        <button class="setting-row" id="row-model" type="button"><svg class="i icon"><use href="#i-spark"/></svg><span class="lbl">默认模型</span><span class="val" id="set-model">—</span><svg class="i chevron"><use href="#i-chevron-right"/></svg></button>
+        <button class="setting-row" id="row-effort" type="button"><svg class="i icon"><use href="#i-bolt"/></svg><span class="lbl">深度思考</span><span class="val" id="set-effort">—</span><svg class="i chevron"><use href="#i-chevron-right"/></svg></button>
+        <button class="setting-row" id="row-system" type="button"><svg class="i icon"><use href="#i-pen"/></svg><span class="lbl">系统提示词</span><span class="val" id="set-system">未设置</span><svg class="i chevron"><use href="#i-chevron-right"/></svg></button>
+        <button class="setting-row" id="row-prompts" type="button"><svg class="i icon"><use href="#i-inbox"/></svg><span class="lbl">提示词库</span><span class="val" id="set-prompts">—</span><svg class="i chevron"><use href="#i-chevron-right"/></svg></button>
+      </div>
+      <div class="group"><div class="group-label">外观</div>
+        <button class="setting-row" id="row-theme" type="button"><svg class="i icon"><use href="#i-palette"/></svg><span class="lbl">主题</span><span class="val" id="set-theme">深色</span><svg class="i chevron"><use href="#i-chevron-right"/></svg></button>
+        <button class="setting-row" id="row-fontsize" type="button"><svg class="i icon"><use href="#i-type"/></svg><span class="lbl">正文字号</span><span class="val" id="set-fontsize">标准</span><svg class="i chevron"><use href="#i-chevron-right"/></svg></button>
+      </div>
+      <div class="group"><div class="group-label">工具</div>
+        <button class="setting-row" id="row-files" type="button"><svg class="i icon"><use href="#i-folder"/></svg><span class="lbl">文件管理</span><svg class="i chevron"><use href="#i-chevron-right"/></svg></button>
+        <button class="setting-row" id="row-terminal" type="button"><svg class="i icon"><use href="#i-terminal"/></svg><span class="lbl">终端 / 构建</span><svg class="i chevron"><use href="#i-chevron-right"/></svg></button>
+        <button class="setting-row" id="row-git" type="button"><svg class="i icon"><use href="#i-git"/></svg><span class="lbl">Git 版本控制</span><svg class="i chevron"><use href="#i-chevron-right"/></svg></button>
+        <button class="setting-row" id="row-device" type="button"><svg class="i icon"><use href="#i-phone"/></svg><span class="lbl">设备操作</span><svg class="i chevron"><use href="#i-chevron-right"/></svg></button>
+        <button class="setting-row" id="row-plugins" type="button"><svg class="i icon"><use href="#i-puzzle"/></svg><span class="lbl">插件</span><svg class="i chevron"><use href="#i-chevron-right"/></svg></button>
+      </div>
+      <div class="group"><div class="group-label">数据</div>
+        <button class="setting-row" id="row-export" type="button"><svg class="i icon"><use href="#i-share"/></svg><span class="lbl">导出对话</span><svg class="i chevron"><use href="#i-chevron-right"/></svg></button>
+        <button class="setting-row" id="row-storage" type="button"><svg class="i icon"><use href="#i-database"/></svg><span class="lbl">本地占用</span><span class="val" id="set-storage">—</span><svg class="i chevron"><use href="#i-chevron-right"/></svg></button>
+        <button class="setting-row" id="row-backup" type="button"><svg class="i icon"><use href="#i-upload"/></svg><span class="lbl">备份</span><svg class="i chevron"><use href="#i-chevron-right"/></svg></button>
+        <button class="setting-row" id="row-restore" type="button"><svg class="i icon"><use href="#i-download"/></svg><span class="lbl">恢复</span><svg class="i chevron"><use href="#i-chevron-right"/></svg></button>
+      </div>
+      <div class="group"><div class="group-label">连接</div>
+        <button class="setting-row" id="row-conn" type="button"><svg class="i icon"><use href="#i-link"/></svg><span class="lbl">连接状态</span><span class="val" id="set-conn">检测中…</span><svg class="i chevron"><use href="#i-chevron-right"/></svg></button>
+        <button class="setting-row" id="row-channel" type="button"><svg class="i icon"><use href="#i-database"/></svg><span class="lbl">通道</span><span class="val mono" id="set-channel">直连</span><svg class="i chevron"><use href="#i-chevron-right"/></svg></button>
+      </div>
+      <div class="group"><div class="group-label">积分</div>
+        <button class="setting-row" id="row-checkin" type="button"><svg class="i icon"><use href="#i-coin"/></svg><span class="lbl">每日签到</span><svg class="i chevron"><use href="#i-chevron-right"/></svg></button>
+        <button class="setting-row" id="row-onboarding" type="button"><svg class="i icon"><use href="#i-coin"/></svg><span class="lbl">新手奖励</span><svg class="i chevron"><use href="#i-chevron-right"/></svg></button>
+      </div>
+      <div class="group"><div class="group-label">关于</div>
+        <button class="setting-row" id="row-about" type="button"><svg class="i icon"><use href="#i-info"/></svg><span class="lbl">版本</span><span class="val mono" id="set-version">—</span></button>
+        <a class="setting-row" id="row-privacy" href="https://xiaohuanxiong.com/privacy" target="_system"><svg class="i icon"><use href="#i-lock"/></svg><span class="lbl">隐私政策</span></a>
+        <a class="setting-row" id="row-terms" href="https://xiaohuanxiong.com/terms" target="_system"><svg class="i icon"><use href="#i-file"/></svg><span class="lbl">用户协议</span></a>
+        <a class="setting-row" id="row-github" href="https://github.com/giangnam728828-rgb/raccoon-mobile" target="_system"><svg class="i icon"><use href="#i-github"/></svg><span class="lbl">开源地址</span></a>
+      </div>
+      <div class="group"><button class="setting-row danger" id="row-logout" type="button"><svg class="i icon"><use href="#i-exit"/></svg><span class="lbl">退出登录</span></button></div>
+      <p class="build-tag" id="build-tag">小浣熊 · AI WORKSPACE</p>
+    </main>
+  </div>
+
 </section>
 
-<!-- ============================================================
-     弹层
-     ============================================================ -->
+<!-- 隐藏文件输入 -->
+<input id="file-image" type="file" accept="image/*" multiple class="hidden-input" aria-hidden="true">
+<input id="file-camera" type="file" accept="image/*" capture="environment" class="hidden-input" aria-hidden="true">
+<input id="file-doc" type="file" accept=".txt,.md,.json,.js,.ts,.py,.html,.css,.yaml,.yml,.xml,.csv" multiple class="hidden-input" aria-hidden="true">
+<input id="file-upload" type="file" multiple class="hidden-input" aria-hidden="true">
+<input id="file-upload-input" type="file" multiple class="hidden-input" aria-hidden="true">
+<div id="toast" role="status" aria-live="polite"></div>
 
-<!-- 模型选择 -->
 <div id="sheet-model" class="sheet hidden" role="dialog" aria-modal="true" aria-label="选择模型">
   <div class="sheet-scrim" data-close></div>
   <div class="sheet-panel tall">
@@ -801,5 +650,22 @@
 <script src="/js/modules.js"></script>
 <script src="/js/tools.js"></script>
 <script src="/js/app.js"></script>
+
+<!-- 脚本加载 -->
+<script src="/native.js"></script>
+<script src="/markdown.js"></script>
+<script src="/direct.js"></script>
+<script src="/js/core.js"></script>
+<script src="/js/store.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/thread.js"></script>
+<script src="/js/settings.js"></script>
+<script src="/js/composer.js"></script>
+<script src="/js/prompts.js"></script>
+<script src="/js/modules.js"></script>
+<script src="/js/tools.js"></script>
+<script src="/js/app.js"></script>
+
 </body>
 </html>

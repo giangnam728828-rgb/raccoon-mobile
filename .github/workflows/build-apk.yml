@@ -88,6 +88,9 @@ jobs:
       - name: 注入设备操作插件（无障碍）
         run: python3 scripts/inject-device-plugin.py android
 
+      - name: 注入文件插件
+        run: python3 scripts/inject-file-plugin.py android
+
       - name: 注入应用图标
         run: python3 scripts/inject-icon.py android
 

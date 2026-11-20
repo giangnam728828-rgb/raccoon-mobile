@@ -276,7 +276,9 @@
   function onLoginSuccess() {
     hideMsg();
     $('token-panel').classList.add('hidden');
-    RC.showView('app');
+    RC.hideLogin && RC.hideLogin();
+    RC.meOK = true;
+    S.loggedIn = true;
     RC.setTab('chat');
     enterApp();
   }
@@ -309,7 +311,7 @@
     const code = $('code');
     if (code) code.value = '';
 
-    RC.showView('login');
+    RC.showLogin && RC.showLogin();
     RC.renderNations();
     RC.paintModelBar();
     RC.renderMe();
@@ -386,6 +388,14 @@
 
   async function sendMessage() {
     if (S.streaming) return;
+
+    // v6：未登录时弹登录层，而不是跳走
+    const hasAuth = global.RaccoonDirect && global.RaccoonDirect.hasAuth && global.RaccoonDirect.hasAuth();
+    if (!hasAuth && RC.isDirect && RC.isDirect()) {
+      RC.showLogin && RC.showLogin();
+      RC.toast('请先登录以开始对话');
+      return;
+    }
 
     const ta = $('input');
     const text = ta.value.trim();
@@ -925,11 +935,11 @@
     RC.closeAllSheets();
     refreshMe().then((ok) => {
       if (!S.loggedIn) {
-        RC.showView('login');
+        RC.showLogin && RC.showLogin();
       }
     });
     setTimeout(() => {
-      if (!S.loggedIn) RC.showView('login');
+      if (!S.loggedIn) RC.showLogin && RC.showLogin();
     }, 1200);
   }
 
@@ -967,10 +977,23 @@
     });
     $('btn-diag').addEventListener('click', openDiag);
 
-    // --- 标签页 ---
-    $$('.tab').forEach((t) => {
+    // --- 工作区导航（左侧导轨） ---
+    $$('.rail-btn').forEach((t) => {
       t.addEventListener('click', () => RC.setTab(t.getAttribute('data-tab')));
     });
+
+    // --- 登录弹层开关（v6：登录不再是首屏） ---
+    const loginClose = $('btn-login-close');
+    if (loginClose) loginClose.addEventListener('click', () => RC.hideLogin());
+    const mePhone = $('me-phone');
+    if (mePhone) {
+      mePhone.style.cursor = 'pointer';
+      mePhone.addEventListener('click', () => {
+        if (!RC.meOK) RC.showLogin();
+      });
+    }
+    const topMenu = $('btn-menu');
+    if (topMenu) topMenu.addEventListener('click', () => RC.setTab('history'));
 
     // --- 顶栏 ---
     $('btn-model').addEventListener('click', () => {
@@ -1103,30 +1126,28 @@
     RC.applyFontScale();
     RC.loadChats();
 
-    // 界面先可用：立刻显示登录页并收起启动层（任何后续绑定/请求失败都不会再冻住界面）
-    const bootEl = $('boot');
-    if (bootEl) {
-      setTimeout(() => bootEl.classList.add('gone'), 60);
-      setTimeout(() => { bootEl.style.display = 'none'; }, 420);
-    }
-    RC.showView('login');
+    // v6：直接进入工作台，不再弹登录页。登录改为按需触发的弹层。
+    RC.showView('app');
+    let startTab = 'chat';
+    try { startTab = localStorage.getItem('raccoon.tab') || 'chat'; } catch {}
+    if (!RC.PANES_VALID || ['chat','history','files','device','me'].indexOf(startTab) < 0) startTab = 'chat';
+    RC.setTab(startTab, { silent: true });
     RC.renderNations();
 
-    try {
-      bind();
-    } catch (e) {
-      console.error('[app] bind 失败（已解锁界面，个别功能可能不可用）:', e && e.message);
+    // 启动动画收起（与网络无关，绝不卡界面）
+    const bootEl = $('boot');
+    if (bootEl) {
+      setTimeout(() => bootEl.classList.add('gone'), 700);
+      setTimeout(() => { bootEl.style.display = 'none'; }, 1200);
     }
 
-    try {
-      RC.autoGrow();
-      RC.updateSend();
-      RC.renderDrafts();
-    } catch (e) {
-      console.error('[app] 输入区初始化失败:', e && e.message);
-    }
+    try { bind(); }
+    catch (e) { console.error('[app] bind 失败:', e && e.message); }
 
-    // 配置（带超时，避免卡死）
+    try { RC.autoGrow(); RC.updateSend(); RC.renderDrafts(); }
+    catch (e) { console.error('[app] 输入区初始化失败:', e && e.message); }
+
+    // 异步加载配置（不阻塞界面）
     try {
       const cfg = await withTimeout(RC.loginConfig(), 5000, '配置');
       if (cfg && cfg.ok) {
@@ -1135,48 +1156,23 @@
           nationCodes: cfg.nationCodes || loginCfg.nationCodes,
           keyRequired: !!cfg.keyRequired,
         };
+        RC.renderNations();
       }
     } catch {}
-    RC.renderNations();
 
-    // 已登录直接进
-    let entered = false;
+    // 后台检查登录态：只更新账号信息，不切屏、不弹登录
     const hasLocal = global.RaccoonDirect.hasAuth() || !RC.isDirect();
     if (hasLocal) {
       try {
         const d = await withTimeout(RC.me(), 6000, '账号');
         if (d && d.ok) {
           applyMe(d);
-          RC.showView('app');
-          RC.setTab('chat', { silent: true });
-          await enterApp();
-          entered = true;
+          RC.meOK = true;
         }
-      } catch (e) {
-        const m = (e && e.message) || '';
-        if (m && !/^未登录|登录已失效/.test(m) && !(e && e.auth === false)) {
-          // 网络问题不拦在登录页
-        }
-      }
+      } catch (e) { /* 网络问题静默，用户点登录时再提示 */ }
     }
-
-    if (!entered) {
-      RC.showView('login');
-      RC.renderNations();
-    }
-
-    // 收起启动层
-    const boot = $('boot');
-    if (boot) {
-      setTimeout(() => boot.classList.add('gone'), 100);
-      setTimeout(() => { boot.style.display = 'none'; }, 460);
-    }
-
-    // 深链调试
-    if (entered) {
-      if (location.hash === '#history') RC.setTab('history');
-      else if (location.hash === '#me') RC.setTab('me');
-    }
+    RC.paintModelBar && RC.paintModelBar();
+    RC.renderMe && RC.renderMe();
   }
 
   Object.assign(RC, {

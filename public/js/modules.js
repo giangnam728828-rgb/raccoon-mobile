@@ -33,16 +33,27 @@
     if (!box) return;
 
     try {
-      const res = await RC.api('/api/fs/list', {
-        method: 'POST',
-        body: { path: fmState.cwd }
-      });
-      if (res.ok && Array.isArray(res.entries)) {
-        fmState.entries = res.entries;
+      // v6：优先用原生插件（RaccoonFile），失败降级到后端 API
+      let entries;
+      if (window.Capacitor && window.Capacitor.Plugins?.RaccoonFile) {
+        const d = await window.Capacitor.Plugins.RaccoonFile.list({ path: fmState.cwd });
+        if (d && d.ok && Array.isArray(d.files)) {
+          entries = d.files.map(f => ({ name: f.name, isDir: !!f.isDir, size: f.size || 0, modified: f.modified || 0, path: f.path }));
+        } else {
+          entries = [];
+          toast(d && d.message ? d.message : '读取目录失败');
+        }
       } else {
-        fmState.entries = [];
-        if (!res.ok) toast(res.message || '读取目录失败');
+        // 降级：后端 API
+        const res = await RC.api('/api/fs/list', { method: 'POST', body: { path: fmState.cwd } });
+        if (res.ok && Array.isArray(res.entries)) {
+          entries = res.entries;
+        } else {
+          entries = [];
+          if (!res.ok) toast(res.message || '读取目录失败');
+        }
       }
+      fmState.entries = entries;
     } catch (e) {
       fmState.entries = [];
       toast(e.message || '读取目录失败');
@@ -620,31 +631,41 @@
   // ============================================================
   function bindModules() {
     try {
-      // 文件管理
-      $('row-files').addEventListener('click', () => { fmInit(); openSheet('sheet-files'); });
-      $('file-new-folder').onclick = fmNewFolder;
-      $('file-new-file').onclick = fmNewFile;
-      $('file-upload').onclick = () => $('file-upload-input').click();
+      // v6：文件管理在独立工作区（pane-files），顶部快捷按钮
+      const nf2 = $('file-new-folder-2');
+      if (nf2) nf2.onclick = fmNewFolder;
+      const up2 = $('file-upload-2');
+      if (up2) up2.onclick = () => $('file-upload-input').click();
+      // 内部弹层版按钮（如仍存在）
+      const nf = $('file-new-folder');
+      if (nf) nf.onclick = fmNewFolder;
+      const nfile = $('file-new-file');
+      if (nfile) nfile.onclick = fmNewFile;
+      const up = $('file-upload');
+      if (up) up.onclick = () => $('file-upload-input').click();
 
       // 终端
-      $('row-terminal').addEventListener('click', () => { terminalConnect(); openSheet('sheet-terminal'); });
-      $('term-clear').onclick = () => { $('terminal').innerHTML = ''; };
-      $('term-kill').onclick = terminalDisconnect;
+      const tc = $('term-clear');
+      if (tc) tc.onclick = () => { $('terminal').innerHTML = ''; };
+      const tk = $('term-kill');
+      if (tk) tk.onclick = terminalDisconnect;
 
       // Git
-      $('row-git').addEventListener('click', () => { gitLoad(); openSheet('sheet-git'); });
-      $('git-pull').onclick = gitPull;
-      $('git-push').onclick = gitPush;
+      const gp = $('git-pull');
+      if (gp) gp.onclick = gitPull;
+      const gsh = $('git-push');
+      if (gsh) gsh.onclick = gitPush;
 
       // 编辑器
-      $('editor-save').onclick = editorSave;
-      $('editor-run').onclick = editorRun;
+      const es = $('editor-save');
+      if (es) es.onclick = editorSave;
+      const er = $('editor-run');
+      if (er) er.onclick = editorRun;
 
-      // Sheet 打开时加载
+      // Sheet 打开时加载（终端/Git/编辑器仍用弹层）
       const origOpenSheet = RC.openSheet;
       RC.openSheet = function(id) {
         origOpenSheet(id);
-        if (id === 'sheet-files') { fmInit(); }
         if (id === 'sheet-git') { gitLoad(); }
         if (id === 'sheet-terminal') { terminalConnect(); }
       };

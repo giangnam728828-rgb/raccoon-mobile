@@ -187,7 +187,15 @@
     }
   }
 
-  // ---------- UI 绑定 ----------
+  async function swipeXY(x1, y1, x2, y2) {
+    if (!accessibilityServiceAvailable) { showToast('当前构建没有设备操作插件'); return; }
+    try {
+      const d = await window.Capacitor.Plugins.RaccoonDevice.swipe({ x1, y1, x2, y2, ms: 300 });
+      showToast(d && d.ok ? '已滑动' : '滑动失败');
+    } catch (err) { showToast('滑动失败：' + (err && err.message)); }
+  }
+
+  // ---------- UI 绑定（v6：设备在独立工作区，不再弹层） ----------
   function bindDeviceSheet() {
     const btnDump = $('dev-dump');
     const btnCopy = $('dev-copy-dump');
@@ -196,45 +204,48 @@
     const btnTapXY = $('dev-tap-xy');
     const inputXY = $('dev-xy');
     const keys = document.querySelectorAll('[data-devkey]');
+    const btnSettings = $('dev-open-settings');
 
-    btnDump?.addEventListener('click', dumpScreen);
-    btnCopy?.addEventListener('click', () => {
-      const txt = $('dev-output')?.textContent || '';
-      navigator.clipboard.writeText(txt).then(() => showToast('已复制')).catch(() => showToast('复制失败'));
-    });
-    btnTapText?.addEventListener('click', () => tapByText(inputText.value.trim()));
-    btnTapXY?.addEventListener('click', () => {
-      const xy = inputXY.value.trim().split(',').map(Number);
-      if (xy.length === 2 && Number.isFinite(xy[0]) && Number.isFinite(xy[1])) {
-        tapByXY(xy[0], xy[1]);
-      } else {
-        showToast('坐标格式错误，应为 x,y');
-      }
-    });
-    keys.forEach(k => {
-      k.addEventListener('click', () => {
-        const action = k.dataset.devkey;
-        if (action === 'back') globalAction('BACK');
-        else if (action === 'home') globalAction('HOME');
-        else if (action === 'recents') globalAction('RECENTS');
-        else if (action === 'notifications') globalAction('NOTIFICATIONS');
+    if (btnDump && !btnDump.dataset.bound) { btnDump.dataset.bound = '1'; btnDump.addEventListener('click', dumpScreen); }
+    if (btnCopy && !btnCopy.dataset.bound) {
+      btnCopy.dataset.bound = '1';
+      btnCopy.addEventListener('click', () => {
+        const txt = $('dev-output')?.textContent || '';
+        (navigator.clipboard?.writeText(txt) || Promise.reject()).then(() => showToast('已复制')).catch(() => showToast('复制失败'));
       });
+    }
+    if (btnTapText && !btnTapText.dataset.bound) {
+      btnTapText.dataset.bound = '1';
+      btnTapText.addEventListener('click', () => tapByText(inputText.value.trim()));
+    }
+    if (btnTapXY && !btnTapXY.dataset.bound) {
+      btnTapXY.dataset.bound = '1';
+      btnTapXY.addEventListener('click', () => {
+        const nums = inputXY.value.trim().split(',').map(Number);
+        if (nums.length === 2 && nums.every(Number.isFinite)) tapByXY(nums[0], nums[1]);
+        else if (nums.length === 4 && nums.every(Number.isFinite)) swipeXY(nums[0], nums[1], nums[2], nums[3]);
+        else showToast('格式错误：x,y 点击 或 x1,y1,x2,y2 滑动');
+      });
+    }
+    keys.forEach(k => {
+      if (k.dataset.bound) return;
+      k.dataset.bound = '1';
+      k.addEventListener('click', () => globalAction(k.dataset.devkey));
     });
+    if (btnSettings && !btnSettings.dataset.bound) {
+      btnSettings.dataset.bound = '1';
+      btnSettings.addEventListener('click', openA11ySettings);
+    }
   }
 
-  function bindMeRows() {
-    $('row-device')?.addEventListener('click', () => openSheet('sheet-device'));
-    $('row-plugins')?.addEventListener('click', () => { renderPlugins(); openSheet('sheet-plugins'); });
-    $('row-privacy')?.addEventListener('click', () => openExternal('https://xiaohuanxiong.com/privacy'));
-    $('row-terms')?.addEventListener('click', () => openExternal('https://xiaohuanxiong.com/terms'));
-    $('row-github')?.addEventListener('click', () => openExternal('https://github.com/giangnam728828-rgb/raccoon-mobile'));
-  }
+  // v6：设置行的导航/外链已由 settings.js 和 <a> 标签处理，这里不再重复绑定
+  function bindMeRows() { /* no-op，保留兼容 */ }
 
   // Export
   Object.assign(RC, {
     checkDeviceSupport, bindDeviceSheet, bindMeRows,
-    dumpScreen, tapByText, tapByXY, globalAction,
-    renderPlugins, openExternal,
+    dumpScreen, tapByText, tapByXY, swipeXY, globalAction,
+    renderPlugins, openExternal, openA11ySettings,
   });
 
   global.RC = RC;
