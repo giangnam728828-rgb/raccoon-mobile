@@ -623,9 +623,14 @@ async function main() {
         }
       });
       await collectCleanupError(cleanupErrors, '等待外层 Promise', async () => {
-        if (!env.catalogCalls.length) return;
+        // v3.24: 禁止静默跳过——外层 Promise 缺失必须显式失败
+        if (!env.catalogCalls.length) {
+          throw new Error('catalog 请求记录缺失');
+        }
         const call = env.catalogCalls[0];
-        if (!call.promise) return;
+        if (!call.promise || typeof call.promise.then !== 'function') {
+          throw new Error('catalog 外层 Promise 缺失或无效');
+        }
         const r = await withBoundedWait(call.promise, 2000, '外层Promise');
         assert.strictEqual(r.ok, false);
         assert.strictEqual(r.reason, 'test-cleanup');
