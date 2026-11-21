@@ -20,10 +20,8 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-// C38 中 init() 的 reject 由 assert.rejects 处理，但可能在下一 tick 才附加 handler。
-// 这里注册一个宽容的 unhandledRejection 监听，避免 Node 因时序差异提前退出；
-// 测试本身的正确性由 assert.rejects / 各 check() 的断言保证。
-process.on('unhandledRejection', () => {});
+// v3.23: 不再注册全局 unhandledRejection 空监听（会吞掉所有测试异常）。
+// C38 通过 initPromise 同 tick 双分支接管（.then(onFulfilled, onRejected)）即时安装 handler。
 
 const API_SRC = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'api.js'), 'utf8');
 const APP_SRC = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'app.js'), 'utf8');
@@ -138,6 +136,8 @@ function createTestEnv() {
     const t = env.timers.find((x) => x.id === id);
     if (t) t.state = 'cleared';
   }
+  // 暴露给 cleanup，让清理使用注入的 clearTimeout（而非直接改状态）
+  env.clearTimeout = controlledClearTimeout;
   env.fireTimer = function (id) {
     const t = env.timers.find((x) => x.id === id);
     if (!t || t.state !== 'pending') return undefined;
@@ -217,6 +217,12 @@ function createTestEnv() {
     showView: () => {},
     hideLogin: () => {},
     showLogin: () => { env.showLoginCalls++; },
+    // v3.23: 六个实测缺失依赖显式登记（禁止 no-op 兜底后必须登记）
+    PANES_VALID: ['chat', 'history', 'files', 'device', 'me'],
+    applyFontScale() {},
+    applyTheme() {},
+    loadPrefs() {},
+    loadPrompts() {},
     loadChats: () => {},
     toast: () => {},
     stopSpeak: () => {},
@@ -248,12 +254,19 @@ function createTestEnv() {
   env.showLoginCalls = 0;
 
   const RC = new Proxy(baseRC, {
-    get(target, prop) {
-      if (prop in target) return target[prop];
-      // 测试注入属性（__ 前缀）不存在时返回 undefined，
-      // 让 app.js 中 `RC.__test = RC.__test || {}` 能正确初始化
-      if (typeof prop === 'string' && prop.indexOf('__') === 0) return undefined;
-      return () => {}; // 其余未知方法兜底 no-op
+    get(target, prop, receiver) {
+      // v3.23: Symbol 属性一律交给 Reflect.get（含已存在于 target 的）
+      if (typeof prop === 'symbol') {
+        return Reflect.get(target, prop, receiver);
+      }
+      // 已登记字符串属性
+      if (prop in target) {
+        return Reflect.get(target, prop, receiver);
+      }
+      // 测试命名空间约定（__ 前缀）
+      if (prop.indexOf('__') === 0) return undefined;
+      // v3.23: 严格——未登记字符串属性立即报错，禁止 no-op 兜底
+      throw new Error(`RC.${prop} 未在测试环境登记（禁止 no-op 兜底）`);
     },
     set(target, prop, value) {
       target[prop] = value;
@@ -424,20 +437,44 @@ function createTestEnv() {
 
   // 5) cleanup（四类资源；safeToResolve 默认 false）
   env.cleanup = async function (initPromise) {
+    const errors = [];
+
+    // ① deferred 逐个独立处理（一个失败不阻断后续）
     for (const [key, d] of env.deferreds) {
-      if (d.state === 'pending') {
-        if (d.safeToResolve) {
-          d.resolve({ ok: false, reason: 'test-cleanup' });
-        } else {
-          throw new Error(`deferred '${key}' 仍 pending 且未声明 safeToResolve，需显式处理`);
+      try {
+        if (d.state === 'pending') {
+          if (d.safeToResolve) {
+            d.resolve({ ok: false, reason: 'test-cleanup' });
+          } else {
+            errors.push(new Error(`deferred '${key}' pending 且未声明 safeToResolve`));
+          }
         }
+      } catch (e) {
+        errors.push(new Error(`deferred '${key}': ${e.message}`));
       }
     }
+
+    // ② initPromise 有界等待（独立收集）
     if (initPromise) {
-      try { await initPromise; } catch (e) { /* 主测试已验证 */ }
+      try {
+        await withBoundedWait(initPromise.catch(() => {}), 2000, 'initPromise');
+      } catch (e) {
+        errors.push(new Error('initPromise 等待: ' + e.message));
+      }
     }
+
+    // ③ timer 逐个独立清理（一个失败不阻断后续，也不改变其他 timer 状态）
     for (const t of env.timers) {
-      if (t.state === 'pending') controlledClearTimeout(t.id);
+      if (t.state !== 'pending') continue;
+      try {
+        env.clearTimeout(t.id);
+      } catch (e) {
+        errors.push(new Error(`timer '${t.id}' 清理失败: ${e.message}`));
+      }
+    }
+
+    if (errors.length) {
+      throw new Error('cleanup 错误: ' + errors.map((e) => e.message).join('; '));
     }
   };
 
@@ -557,6 +594,11 @@ async function main() {
       };
 
       initPromise = env.RC.init();
+      // 同 tick 接管 Promise：立即安装双分支 handler，消除延迟 attach 窗口
+      const initOutcome = initPromise.then(
+        (value) => ({ status: 'resolved', value }),
+        (error) => ({ status: 'rejected', error })
+      );
 
       // 证据1：后台请求确实启动
       await waitUntil(() => env.catalogCalls.length >= 1, 'catalog 请求应启动');
@@ -564,7 +606,9 @@ async function main() {
       assert.strictEqual(env.RC.__testApi.hasActiveCatalog(), true, '应有活跃请求');
       assert.strictEqual(env.getCatalogNetState(), 'pending', '底层网络应挂起');
 
-      await assert.rejects(initPromise, /init exception/);
+      const outcome = await initOutcome;
+      assert.strictEqual(outcome.status, 'rejected', 'init 应以异常结束');
+      assert.match(outcome.error.message, /init exception/, '错误应为 init exception');
       assert.strictEqual(env.RC.currentAccountId(), 'ok', '上下文应保留');
       assert.strictEqual(paintCallCount, 2, 'paintModelBar 恰好两次');
     } catch (err) {
@@ -626,18 +670,61 @@ async function main() {
   for (const c of invalidCases) {
     await check('C39 无效身份 ' + c.name, async () => {
       const env = createTestEnv();
-      // spy 当前 endAccountContext（真实生产函数 + 注入计数），保留原行为
-      const origEnd = env.RC.endAccountContext;
-      let endCount = 0;
-      env.RC.endAccountContext = function (...args) {
-        endCount++;
-        return origEnd.apply(this, args);
-      };
-      env.RC.me = () => Promise.resolve(c.value);
-      const p = env.RC.init();
-      await p.catch(() => {});
-      await flushMicrotasks();
-      assert.strictEqual(endCount, 1, c.name + ' 应调用 endAccountContext 一次');
+      let mainError = null;
+      const cleanupErrors = [];
+
+      try {
+        // ① 先建立有效旧账号上下文
+        env.RC.beginAccountContext('old-account');
+        assert.strictEqual(env.RC.currentAccountId(), 'old-account', '旧上下文应建立');
+        env.RC.state.models = [{ id: 'old-model', name: 'Old' }];
+
+        // ② spy 真实 endAccountContext（保留原行为）
+        const origEnd = env.RC.endAccountContext;
+        let endCount = 0;
+        env.RC.endAccountContext = function (...args) {
+          endCount++;
+          return origEnd.apply(this, args);
+        };
+
+        // ③ me 返回无效身份
+        env.RC.me = () => Promise.resolve(c.value);
+
+        // ④ 启动 init 并【同 tick 接管】Promise（不吞异常）
+        const initPromise = env.RC.init();
+        const outcome = await initPromise.then(
+          (value) => ({ status: 'resolved', value }),
+          (error) => ({ status: 'rejected', error })
+        );
+
+        // ⑤ 分别验证（四种无效身份下 init 应正常完成，无异常）
+        assert.strictEqual(
+          outcome.status, 'resolved',
+          c.name + ' 下 init 应正常完成，实际 ' + outcome.status +
+          (outcome.error ? ' (' + outcome.error.message + ')' : '')
+        );
+        assert.strictEqual(endCount, 1, c.name + ' 应调用 endAccountContext 一次');
+        assert.strictEqual(env.RC.currentAccountId(), null, '旧账号上下文应被清除');
+        assert.strictEqual(env.RC.getModels().length, 0, '旧模型上下文不应残留');
+      } catch (err) {
+        mainError = err;
+      } finally {
+        try {
+          await withBoundedWait(env.cleanup(), 2000, 'cleanup');
+        } catch (cleanupErr) {
+          cleanupErrors.push(cleanupErr);
+        }
+      }
+
+      if (mainError) {
+        if (cleanupErrors.length) {
+          mainError.message += '\nCleanup errors: ' + cleanupErrors.map((e) => e.message).join('; ');
+        }
+        throw mainError;
+      }
+      if (cleanupErrors.length) {
+        throw new Error('cleanup 失败: ' + cleanupErrors.map((e) => e.message).join('; '));
+      }
     });
   }
 
