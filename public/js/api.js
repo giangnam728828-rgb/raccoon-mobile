@@ -332,11 +332,11 @@
     __catalogState.requestSeq++;
     __catalogState.status = 'idle';
 
-    // N3：恢复该账号缓存（不算网络成功）
+    // N3：恢复该账号缓存（不算网络成功，不修改持久化偏好）
     const cached = __catalogState.lastOk[accountId];
     if (cached && cached.hasLoaded) {
       S.models = cached.models.slice();
-      selectDefaultModel(S.models);
+      // 不调用 selectDefaultModel：缓存恢复只恢复数据与显示，不改 S.prefs.model / 不 savePrefs
     }
 
     // N3：立即同步模型栏

@@ -31,6 +31,7 @@ function makeEnv() {
   };
 
   const pending = [];
+  const controllers = [];  // 记录网络请求的 AbortSignal（C25 用）
 
   const RC = {
     state: env.state,
@@ -49,6 +50,7 @@ function makeEnv() {
       handle: (p, opts) => {
         const d = deferred();
         pending.push({ d, opts, path: p });
+        controllers.push({ signal: opts && opts.signal });
         return d.promise;
       },
     },
@@ -62,7 +64,7 @@ function makeEnv() {
   vm.createContext(context);
   vm.runInContext(API_SRC, context, { filename: 'api.js' });
 
-  return { RC, env, pending };
+  return { RC, env, pending, controllers };
 }
 
 const results = [];
@@ -74,6 +76,59 @@ function check(name, fn) {
 }
 
 async function main() {
+  // N3：缓存恢复无持久化副作用（真实 api.js）
+  await check('N3 缓存恢复无持久化副作用', async () => {
+    const { RC, env, pending } = makeEnv();
+
+    // ① 通过真实 loadCatalog 建立缓存
+    RC.beginAccountContext('u1');
+    const p1 = RC.loadCatalog();
+    pending[0].d.resolve({ ok: true, models: [{ name: 'm1' }] });
+    await p1;
+
+    // ② 改变用户偏好（不在缓存列表中）
+    RC.state.prefs.model = 'm-preferred';
+    const savePrefsBefore = env.savedPrefs;
+    const paintBefore = env.paintCalls;
+
+    // ③ 结束并重新建立同一账号上下文（触发缓存恢复）
+    RC.endAccountContext();
+    RC.beginAccountContext('u1');
+
+    // ④ 断言：缓存恢复但无持久化副作用
+    assert.strictEqual(RC.getModels().map((m) => m.id).join(','), 'm1', '模型应恢复');
+    assert.strictEqual(RC.state.prefs.model, 'm-preferred', '用户偏好不应改变');
+    assert.strictEqual(env.savedPrefs, savePrefsBefore, 'savePrefs 不应被调用');
+    assert.ok(env.paintCalls > paintBefore, '模型栏应刷新');
+  });
+
+  // C25：同账号幂等 + AbortSignal 未取消 + savePrefs spy
+  await check('C25 同账号幂等不重置', async () => {
+    const { RC, env, pending, controllers } = makeEnv();
+
+    RC.beginAccountContext('u1');
+    const p1 = RC.loadCatalog();
+    const pendingBefore = pending.length;
+    const ctrl = controllers[0];
+    const savePrefsBefore = env.savedPrefs;
+
+    // 重复建立同账号上下文（幂等，应跳过）
+    RC.beginAccountContext('u1');
+
+    // 断言无新请求、原请求 signal 未 abort
+    assert.strictEqual(pending.length, pendingBefore, '不应创建新请求');
+    assert.ok(ctrl.signal, '应捕获到 AbortSignal');
+    assert.strictEqual(ctrl.signal.aborted, false, 'signal 不应被 abort');
+
+    // 原请求正常完成（模型 ID 与当前偏好一致，避免默认选择污染 savePrefs 计数）
+    RC.state.prefs.model = 'm';
+    pending[0].d.resolve({ ok: true, models: [{ name: 'm' }] });
+    const r = await p1;
+    assert.strictEqual(r.ok, true);
+    assert.strictEqual(RC.getModels().map((x) => x.id).join(','), 'm');
+    assert.strictEqual(env.savedPrefs, savePrefsBefore, '重复幂等不应触发偏好保存');
+  });
+
   // C21：无有效账号上下文不发起请求
   await check('C21 无账号不发起请求', async () => {
     const { RC, pending } = makeEnv();
